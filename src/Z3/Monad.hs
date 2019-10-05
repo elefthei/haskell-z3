@@ -217,6 +217,37 @@ module Z3.Monad
   , mkExistsConst
 
   -- * Floating point
+  , mkDoubleSort
+  , mkFpFromDouble
+  , mkFpFromInt
+  , mkFpFromParts
+  , mkFpZero
+  , mkFpNan
+  , mkFpInf
+  , mkFpRna
+  , mkFpRne
+  , mkFpRtn
+  , mkFpRtp
+  , mkFpRtz
+  , mkFpIsInf
+  , mkFpIsNan
+  , mkFpIsNeg
+  , mkFpIsPos
+  , mkFpIsZero
+  , mkFpAbs
+  , mkFpAdd
+  , mkFpSub
+  , mkFpDiv
+  , mkFpMul
+  , mkFpRem
+  , mkFpNeg
+  , mkFpEq
+  , mkFpGeq
+  , mkFpGt
+  , mkFpLeq
+  , mkFpLt
+  , mkFpMax
+  , mkFpMin
 
   -- * Accessors
   , getSymbolString
@@ -1476,7 +1507,98 @@ mkExists = liftFun4 Base.mkExists
 ---------------------------------------------------------------------
 -- Floating point
 
+mkDoubleSort :: MonadZ3 z3 => z3 Sort
+mkDoubleSort = liftScalar Base.mkIntSort
 
+mkFpFromDouble :: MonadZ3 z3 => Double -> Sort -> z3 AST
+mkFpFromDouble = liftFun2 Base.mkFpFromDouble
+
+mkFpFromInt :: MonadZ3 z3 => Int64 -> Sort -> z3 AST
+mkFpFromInt = liftFun2 Base.mkFpFromInt
+
+mkFpFromParts :: MonadZ3 z3 => Bool -> Int64 -> Word64 -> Sort -> z3 AST
+mkFpFromParts = liftFun4 Base.mkFpFromParts
+
+mkFpZero :: MonadZ3 z3 => Sort -> Bool -> z3 AST
+mkFpZero = liftFun2 Base.mkFpZero
+
+mkFpNan :: MonadZ3 z3 => Sort -> z3 AST
+mkFpNan = liftFun1 Base.mkFpNan
+
+mkFpInf :: MonadZ3 z3 => Sort -> Bool -> z3 AST
+mkFpInf = liftFun2 Base.mkFpInf
+
+mkFpRna :: MonadZ3 z3 => z3 AST
+mkFpRna = liftScalar Base.mkFpRna
+
+mkFpRne :: MonadZ3 z3 => z3 AST
+mkFpRne = liftScalar Base.mkFpRne
+
+mkFpRtn :: MonadZ3 z3 => z3 AST
+mkFpRtn = liftScalar Base.mkFpRtn
+
+mkFpRtp :: MonadZ3 z3 => z3 AST
+mkFpRtp = liftScalar Base.mkFpRtp
+
+mkFpRtz :: MonadZ3 z3 => z3 AST
+mkFpRtz = liftScalar Base.mkFpRtz
+
+mkFpIsInf :: MonadZ3 z3 => AST -> z3 AST
+mkFpIsInf = liftFun1 Base.mkFpIsInf
+
+mkFpIsNan :: MonadZ3 z3 => AST -> z3 AST
+mkFpIsNan = liftFun1 Base.mkFpIsNan
+
+mkFpIsNeg :: MonadZ3 z3 => AST -> z3 AST
+mkFpIsNeg = liftFun1 Base.mkFpIsNeg
+
+mkFpIsPos :: MonadZ3 z3 => AST -> z3 AST
+mkFpIsPos = liftFun1 Base.mkFpIsPos
+
+mkFpIsZero :: MonadZ3 z3 => AST -> z3 AST
+mkFpIsZero = liftFun1 Base.mkFpIsPos
+
+mkFpAbs :: MonadZ3 z3 => AST -> z3 AST
+mkFpAbs = liftFun1 Base.mkFpAbs
+
+mkFpAdd :: MonadZ3 z3 => AST -> AST -> AST -> z3 AST
+mkFpAdd = liftFun3 Base.mkFpAdd
+
+mkFpSub :: MonadZ3 z3 => AST -> AST -> AST -> z3 AST
+mkFpSub = liftFun3 Base.mkFpSub
+
+mkFpDiv :: MonadZ3 z3 => AST -> AST -> AST -> z3 AST
+mkFpDiv = liftFun3 Base.mkFpDiv
+
+mkFpMul :: MonadZ3 z3 => AST -> AST -> AST -> z3 AST
+mkFpMul = liftFun3 Base.mkFpMul
+
+mkFpRem :: MonadZ3 z3 => AST -> AST -> AST -> z3 AST
+mkFpRem = liftFun3 Base.mkFpRem
+
+mkFpNeg :: MonadZ3 z3 => AST -> z3 AST
+mkFpNeg = liftFun1 Base.mkFpNeg
+
+mkFpEq :: MonadZ3 z3 => AST -> AST -> z3 AST
+mkFpEq = liftFun2 Base.mkFpEq
+
+mkFpGeq :: MonadZ3 z3 => AST -> AST -> z3 AST
+mkFpGeq = liftFun2 Base.mkFpGeq
+
+mkFpGt :: MonadZ3 z3 => AST -> AST -> z3 AST
+mkFpGt = liftFun2 Base.mkFpGt
+
+mkFpLeq :: MonadZ3 z3 => AST -> AST -> z3 AST
+mkFpLeq = liftFun2 Base.mkFpLeq
+
+mkFpLt :: MonadZ3 z3 => AST -> AST -> z3 AST
+mkFpLt = liftFun2 Base.mkFpLt
+
+mkFpMax :: MonadZ3 z3 => AST -> AST -> z3 AST
+mkFpMax = liftFun2 Base.mkFpMax
+
+mkFpMin :: MonadZ3 z3 => AST -> AST -> z3 AST
+mkFpMin = liftFun2 Base.mkFpMin
 
 ---------------------------------------------------------------------
 -- Accessors
