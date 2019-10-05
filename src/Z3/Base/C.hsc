@@ -1499,24 +1499,92 @@ foreign import ccall unsafe "Z3_fixedpoint_query_relations"
 
 -- For now, we only need doubles 
 
--- | Reference: <https://z3prover.github.io/api/html/group__capi.html#gadc7fe7b050f2a2ceaf8e2f57fdcebb38>
 foreign import ccall unsafe "Z3_mk_fpa_sort_double"
     z3_mk_fpa_sort_double :: Ptr Z3_context -> IO (Ptr Z3_sort)
 
 -- Variables and numbers 
 
+foreign import ccall unsafe "Z3_mk_fpa_numeral_double"
+    z3_mk_fpa_numeral_double :: Ptr Z3_context
+                             -> CDouble -- ^ Amt to make 
+                             -> Ptr Z3_sort -- ^ Sort 
+                             -> IO (Ptr Z3_ast)
+
+foreign import ccall unsafe "Z3_mk_fpa_numeral_int"
+    z3_mk_fpa_numeral_int :: Ptr Z3_context
+                          -> CInt -- ^ Amt to make 
+                          -> Ptr Z3_sort -- ^ Sort 
+                          -> IO (Ptr Z3_ast)
+
+foreign import ccall unsafe "Z3_mk_fpa_numeral_int64_uint64"
+    z3_mk_fpa_numeral_int64_uint64 :: Ptr Z3_context
+                                   -> Z3_bool -- ^ Sign 
+                                   -> CLLong -- ^ Exponent
+                                   -> CULong -- ^ Sign 
+                                   -> Ptr Z3_sort -- ^ Sort 
+                                   -> IO (Ptr Z3_ast)
+
 foreign import ccall unsafe "Z3_mk_fpa_zero"
     z3_mk_fpa_zero :: Ptr Z3_context 
                    -> Ptr Z3_sort -- ^ Sort of the zero
-                   -> Ptr Z3_bool -- ^ Negative or positive 
+                   -> Z3_bool -- ^ Negative or positive 
                    -> IO (Ptr Z3_ast)
+
+foreign import ccall unsafe "Z3_mk_fpa_nan"
+    z3_mk_fpa_nan :: Ptr Z3_context 
+                  -> Ptr Z3_sort -- ^ Sort of the NaN
+                  -> IO (Ptr Z3_ast)                      
 
 foreign import ccall unsafe "Z3_mk_fpa_inf"
     z3_mk_fpa_inf :: Ptr Z3_context
                   -> Ptr Z3_sort -- ^ Sort of the negative
-                  -> Ptr Z3_bool -- ^ Negative or positive 
+                  -> Z3_bool -- ^ Negative or positive 
                   -> IO (Ptr Z3_ast)
 
+-- Rounding modes
+
+foreign import ccall unsafe "Z3_mk_fpa_rna"
+    z3_mk_fpa_rna :: Ptr Z3_context -> IO (Ptr Z3_ast)
+
+foreign import ccall unsafe "Z3_mk_fpa_rne"
+    z3_mk_fpa_rne :: Ptr Z3_context -> IO (Ptr Z3_ast)
+
+foreign import ccall unsafe "Z3_mk_fpa_rtn"
+    z3_mk_fpa_rtn :: Ptr Z3_context -> IO (Ptr Z3_ast)
+
+foreign import ccall unsafe "Z3_mk_fpa_rtp"
+    z3_mk_fpa_rtp :: Ptr Z3_context -> IO (Ptr Z3_ast)
+
+foreign import ccall unsafe "Z3_mk_fpa_rtz"
+    z3_mk_fpa_rtz :: Ptr Z3_context -> IO (Ptr Z3_ast)                     
+                     
+-- Checking properties of fps                     
+
+foreign import ccall unsafe "Z3_mk_fpa_is_infinite"
+    z3_mk_fpa_is_infinite :: Ptr Z3_context
+                          -> Ptr Z3_ast 
+                          -> IO (Ptr Z3_ast)
+
+foreign import ccall unsafe "Z3_mk_fpa_is_nan"
+    z3_mk_fpa_is_nan :: Ptr Z3_context
+                     -> Ptr Z3_ast 
+                     -> IO (Ptr Z3_ast)
+
+foreign import ccall unsafe "Z3_mk_fpa_is_negative"
+    z3_mk_fpa_is_negative :: Ptr Z3_context
+                          -> Ptr Z3_ast 
+                          -> IO (Ptr Z3_ast)
+
+foreign import ccall unsafe "Z3_mk_fpa_is_positive"
+    z3_mk_fpa_is_positive :: Ptr Z3_context
+                          -> Ptr Z3_ast 
+                          -> IO (Ptr Z3_ast)
+
+foreign import ccall unsafe "Z3_mk_fpa_is_zero"
+    z3_mk_fpa_is_zero :: Ptr Z3_context
+                      -> Ptr Z3_ast 
+                      -> IO (Ptr Z3_ast)
+                        
 -- A subset of the Z3 floating point operations that we need for JS
                              
 foreign import ccall unsafe "Z3_mk_fpa_abs"
@@ -1529,6 +1597,13 @@ foreign import ccall unsafe "Z3_mk_fpa_add"
                   -> Ptr Z3_ast -- ^ t2                      
                   -> IO (Ptr Z3_ast)
 
+foreign import ccall unsafe "Z3_mk_fpa_sub"
+    z3_mk_fpa_sub :: Ptr Z3_context
+                  -> Ptr Z3_ast -- ^ rm
+                  -> Ptr Z3_ast -- ^ t1
+                  -> Ptr Z3_ast -- ^ t2                      
+                  -> IO (Ptr Z3_ast)                     
+
 foreign import ccall unsafe "Z3_mk_fpa_div"
     z3_mk_fpa_div :: Ptr Z3_context
                   -> Ptr Z3_ast -- ^ rm
@@ -1536,6 +1611,27 @@ foreign import ccall unsafe "Z3_mk_fpa_div"
                   -> Ptr Z3_ast -- ^ t2                      
                   -> IO (Ptr Z3_ast)
 
+foreign import ccall unsafe "Z3_mk_fpa_mul"
+    z3_mk_fpa_mul :: Ptr Z3_context
+                  -> Ptr Z3_ast -- ^ rm
+                  -> Ptr Z3_ast -- ^ t1
+                  -> Ptr Z3_ast -- ^ t2                      
+                  -> IO (Ptr Z3_ast)
+
+foreign import ccall unsafe "Z3_mk_fpa_rem"
+    z3_mk_fpa_rem :: Ptr Z3_context
+                  -> Ptr Z3_ast -- ^ rm
+                  -> Ptr Z3_ast -- ^ t1
+                  -> Ptr Z3_ast -- ^ t2                      
+                  -> IO (Ptr Z3_ast)
+                     
+foreign import ccall unsafe "Z3_mk_fpa_neg"
+    z3_mk_fpa_neg :: Ptr Z3_context
+                  -> Ptr Z3_ast -- ^ t1
+                  -> IO (Ptr Z3_ast)                                          
+                     
+-- Comparisons 
+                     
 foreign import ccall unsafe "Z3_mk_fpa_eq"
     z3_mk_fpa_eq :: Ptr Z3_context
                  -> Ptr Z3_ast -- ^ t1
@@ -1554,6 +1650,31 @@ foreign import ccall unsafe "Z3_mk_fpa_gt"
                  -> Ptr Z3_ast -- ^ t2                      
                  -> IO (Ptr Z3_ast)
 
+foreign import ccall unsafe "Z3_mk_fpa_leq"
+    z3_mk_fpa_leq :: Ptr Z3_context
+                  -> Ptr Z3_ast -- ^ t1
+                  -> Ptr Z3_ast -- ^ t2                      
+                  -> IO (Ptr Z3_ast)
+
+foreign import ccall unsafe "Z3_mk_fpa_lt"
+    z3_mk_fpa_lt :: Ptr Z3_context
+                 -> Ptr Z3_ast -- ^ t1
+                 -> Ptr Z3_ast -- ^ t2                      
+                 -> IO (Ptr Z3_ast)
+
+foreign import ccall unsafe "Z3_mk_fpa_max"
+    z3_mk_fpa_max :: Ptr Z3_context
+                  -> Ptr Z3_ast -- ^ t1
+                  -> Ptr Z3_ast -- ^ t2                      
+                  -> IO (Ptr Z3_ast)
+
+foreign import ccall unsafe "Z3_mk_fpa_min"
+    z3_mk_fpa_min :: Ptr Z3_context
+                  -> Ptr Z3_ast -- ^ t1
+                  -> Ptr Z3_ast -- ^ t2                      
+                  -> IO (Ptr Z3_ast)                     
+                    
+                    
 
 
                     
