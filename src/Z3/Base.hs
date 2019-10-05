@@ -259,7 +259,38 @@ module Z3.Base (
   , mkExistsConst
 
   -- * Floating point 
-    
+  , mkDoubleSort
+  , mkFpFromDouble
+  , mkFpFromInt
+  , mkFpFromParts
+  , mkFpZero
+  , mkFpNan
+  , mkFpInf
+  , mkFpRna
+  , mkFpRne
+  , mkFpRtn
+  , mkFpRtp
+  , mkFpRtz
+  , mkFpIsInf
+  , mkFpIsNan
+  , mkFpIsNeg
+  , mkFpIsPos
+  , mkFpIsZero
+  , mkFpAbs
+  , mkFpAdd
+  , mkFpSub
+  , mkFpDiv
+  , mkFpMul
+  , mkFpRem
+  , mkFpNeg
+  , mkFpEq
+  , mkFpGeq
+  , mkFpGt
+  , mkFpLeq
+  , mkFpLt
+  , mkFpMax
+  , mkFpMin 
+  
   -- * Accessors
   , getSymbolString
   , getSortKind
