@@ -258,6 +258,8 @@ module Z3.Base (
   , mkForallConst
   , mkExistsConst
 
+  -- * Floating point 
+    
   -- * Accessors
   , getSymbolString
   , getSortKind
@@ -1662,7 +1664,111 @@ mkExistsConst = marshalMkQConst z3_mk_exists_const
 -- TODO: Z3_mk_quantifier_const_ex
 
 ---------------------------------------------------------------------
--- Accessors
+-- Floating point
+
+mkDoubleSort :: Context -> IO Sort
+mkDoubleSort = liftFun0 z3_mk_fpa_sort_double
+
+mkFpFromDouble :: Context -> Double -> Sort -> IO AST
+mkFpFromDouble = liftFun2 z3_mk_fpa_numeral_double
+
+mkFpFromInt :: Context -> Int64 -> Sort -> IO AST
+mkFpFromInt = liftFun2 z3_mk_fpa_numeral_int
+
+mkFpFromParts :: Context -> Bool -> Int64 -> Word64 -> Sort -> IO AST
+mkFpFromParts = liftFun4 z3_mk_fpa_numeral_int64_uint64
+
+mkFpZero :: Context -> Sort -> Bool -> IO AST
+mkFpZero = liftFun2 z3_mk_fpa_zero
+
+mkFpNan :: Context -> Sort -> IO AST
+mkFpNan = liftFun1 z3_mk_fpa_nan
+
+mkFpInf :: Context -> Sort -> Bool -> IO AST
+mkFpInf = liftFun2 z3_mk_fpa_inf          
+                
+-- Rounding modes
+
+mkFpRna :: Context -> IO AST
+mkFpRna = liftFun0 z3_mk_fpa_rna
+
+mkFpRne :: Context -> IO AST
+mkFpRne = liftFun0 z3_mk_fpa_rne
+
+mkFpRtn :: Context -> IO AST
+mkFpRtn = liftFun0 z3_mk_fpa_rtn
+
+mkFpRtp :: Context -> IO AST
+mkFpRtp = liftFun0 z3_mk_fpa_rtp
+
+mkFpRtz :: Context -> IO AST
+mkFpRtz = liftFun0 z3_mk_fpa_rtz          
+                
+-- Checking properties
+
+mkFpIsInf :: Context -> AST -> IO AST
+mkFpIsInf = liftFun1 z3_mk_fpa_is_infinite
+
+mkFpIsNan :: Context -> AST -> IO AST
+mkFpIsNan = liftFun1 z3_mk_fpa_is_nan
+
+mkFpIsNeg :: Context -> AST -> IO AST
+mkFpIsNeg = liftFun1 z3_mk_fpa_is_negative
+
+mkFpIsPos :: Context -> AST -> IO AST
+mkFpIsPos = liftFun1 z3_mk_fpa_is_positive
+
+mkFpIsZero :: Context -> AST -> IO AST
+mkFpIsZero = liftFun1 z3_mk_fpa_is_zero
+                
+-- A subset of the operations we need
+
+mkFpAbs :: Context -> AST -> IO AST
+mkFpAbs = liftFun1 z3_mk_fpa_abs
+
+mkFpAdd :: Context -> AST -> AST -> AST -> IO AST
+mkFpAdd = liftFun3 z3_mk_fpa_add
+
+mkFpSub :: Context -> AST -> AST -> AST -> IO AST
+mkFpSub = liftFun3 z3_mk_fpa_sub
+
+mkFpDiv :: Context -> AST -> AST -> AST -> IO AST
+mkFpDiv = liftFun3 z3_mk_fpa_div
+
+mkFpMul :: Context -> AST -> AST -> AST -> IO AST
+mkFpMul = liftFun3 z3_mk_fpa_mul
+
+mkFpRem :: Context -> AST -> AST -> AST -> IO AST
+mkFpRem = liftFun3 z3_mk_fpa_rem
+
+mkFpNeg :: Context -> AST -> IO AST
+mkFpNeg = liftFun1 z3_mk_fpa_neg
+
+-- Comparisons
+
+mkFpEq :: Context -> AST -> AST -> IO AST
+mkFpEq = liftFun2 z3_mk_fpa_eq
+
+mkFpGeq :: Context -> AST -> AST -> IO AST
+mkFpGeq = liftFun2 z3_mk_fpa_geq
+
+mkFpGt :: Context -> AST -> AST -> IO AST
+mkFpGt = liftFun2 z3_mk_fpa_gt
+
+mkFpLeq :: Context -> AST -> AST -> IO AST
+mkFpLeq = liftFun2 z3_mk_fpa_leq
+
+mkFpLt :: Context -> AST -> AST -> IO AST
+mkFpLt = liftFun2 z3_mk_fpa_lt
+
+mkFpMax :: Context -> AST -> AST -> IO AST
+mkFpMax = liftFun2 z3_mk_fpa_max
+
+mkFpMin :: Context -> AST -> AST -> IO AST
+mkFpMin = liftFun2 z3_mk_fpa_min
+
+---------------------------------------------------------------------
+-- accessors
 
 -- TODO: Z3_get_symbol_kind
 
@@ -3055,6 +3161,13 @@ liftFun3 :: (Marshal ah ac, Marshal bh bc, Marshal ch cc, Marshal rh rc) =>
 liftFun3 f c x y z = h2c x $ \x1 -> h2c y $ \y1 -> h2c z $ \z1 ->
   toHsCheckError c $ \cPtr -> f cPtr x1 y1 z1
 {-# INLINE liftFun3 #-}
+
+liftFun4 :: (Marshal ah ac, Marshal bh bc, Marshal ch cc, Marshal dh dc, Marshal rh rc) =>
+              (Ptr Z3_context -> ac -> bc -> cc -> dc -> IO rc) ->
+              Context -> ah -> bh -> ch -> dh -> IO rh
+liftFun4 f c x y z v = h2c x $ \x1 -> h2c y $ \y1 -> h2c z $ \z1 -> h2c v $ \v1 -> 
+  toHsCheckError c $ \cPtr -> f cPtr x1 y1 z1 v1 
+{-# INLINE liftFun4 #-}
 
 ---------------------------------------------------------------------
 -- Utils

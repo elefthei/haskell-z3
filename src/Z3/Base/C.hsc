@@ -1520,7 +1520,7 @@ foreign import ccall unsafe "Z3_mk_fpa_numeral_int64_uint64"
     z3_mk_fpa_numeral_int64_uint64 :: Ptr Z3_context
                                    -> Z3_bool -- ^ Sign 
                                    -> CLLong -- ^ Exponent
-                                   -> CULong -- ^ Sign 
+                                   -> CULLong -- ^ Sign 
                                    -> Ptr Z3_sort -- ^ Sort 
                                    -> IO (Ptr Z3_ast)
 

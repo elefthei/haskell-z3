@@ -216,6 +216,8 @@ module Z3.Monad
   , mkForallConst
   , mkExistsConst
 
+  -- * Floating point
+
   -- * Accessors
   , getSymbolString
   , getSortKind
@@ -382,44 +384,28 @@ module Z3.Monad
   )
   where
 
-import Z3.Opts
-import Z3.Base
-  ( Symbol
-  , AST
-  , Sort
-  , FuncDecl
-  , App
-  , Pattern
-  , Constructor
-  , Model
-  , FuncInterp
-  , FuncEntry
-  , FuncModel(..)
-  , Result(..)
-  , Logic(..)
-  , ASTPrintMode(..)
-  , Version(..)
-  , Params
-  , Solver
-  , Fixedpoint
-  , SortKind(..)
-  , ASTKind(..)
-  , Tactic
-  , ApplyResult
-  , Goal
-  )
-import qualified Z3.Base as Base
+import           Z3.Base                    (AST, ASTKind (..),
+                                             ASTPrintMode (..), App,
+                                             ApplyResult, Constructor,
+                                             Fixedpoint, FuncDecl, FuncEntry,
+                                             FuncInterp, FuncModel (..), Goal,
+                                             Logic (..), Model, Params, Pattern,
+                                             Result (..), Solver, Sort,
+                                             SortKind (..), Symbol, Tactic,
+                                             Version (..))
+import qualified Z3.Base                    as Base
+import           Z3.Opts
 
-import Control.Applicative ( Applicative )
-import Data.Fixed ( Fixed, HasResolution )
-import Control.Monad.IO.Class ( MonadIO, liftIO )
-import Control.Monad.Trans.Reader ( ReaderT, runReaderT, asks )
-import Control.Monad.Fix ( MonadFix )
-import Data.Int ( Int64 )
-import Data.List.NonEmpty (NonEmpty)
-import Data.Word ( Word, Word64 )
-import Data.Traversable ( Traversable )
-import qualified Data.Traversable as T
+import           Control.Applicative        (Applicative)
+import           Control.Monad.Fix          (MonadFix)
+import           Control.Monad.IO.Class     (MonadIO, liftIO)
+import           Control.Monad.Trans.Reader (ReaderT, asks, runReaderT)
+import           Data.Fixed                 (Fixed, HasResolution)
+import           Data.Int                   (Int64)
+import           Data.List.NonEmpty         (NonEmpty)
+import           Data.Traversable           (Traversable)
+import qualified Data.Traversable           as T
+import           Data.Word                  (Word, Word64)
 
 ---------------------------------------------------------------------
 -- The Z3 monad-class
@@ -1290,7 +1276,7 @@ mkBvmulNoUnderflow = liftFun2 Base.mkBvmulNoUnderflow
 mkSelect :: MonadZ3 z3 => AST -> AST -> z3 AST
 mkSelect = liftFun2 Base.mkSelect
 
--- | Array update.   
+-- | Array update.
 --
 -- Reference: <http://research.microsoft.com/en-us/um/redmond/projects/z3/group__capi.html#gae305a4f54b4a64f7e5973ae6ccb13593>
 mkStore :: MonadZ3 z3 => AST -> AST -> AST -> z3 AST
@@ -1486,6 +1472,11 @@ mkExistsConst = liftFun3 Base.mkExistsConst
 
 mkExists :: MonadZ3 z3 => [Pattern] -> [Symbol] -> [Sort] -> AST -> z3 AST
 mkExists = liftFun4 Base.mkExists
+
+---------------------------------------------------------------------
+-- Floating point
+
+
 
 ---------------------------------------------------------------------
 -- Accessors
