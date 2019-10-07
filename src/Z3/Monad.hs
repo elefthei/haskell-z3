@@ -1508,7 +1508,7 @@ mkExists = liftFun4 Base.mkExists
 -- Floating point
 
 mkDoubleSort :: MonadZ3 z3 => z3 Sort
-mkDoubleSort = liftScalar Base.mkIntSort
+mkDoubleSort = liftScalar Base.mkDoubleSort
 
 mkFpFromDouble :: MonadZ3 z3 => Double -> Sort -> z3 AST
 mkFpFromDouble = liftFun2 Base.mkFpFromDouble

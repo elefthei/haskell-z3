@@ -1,18 +1,17 @@
-
 module Main where
 
 import qualified Example.Monad.Queens4
 import qualified Example.Monad.Queens4All
-import qualified Example.Monad.DataTypes
-import qualified Example.Monad.FuncModel
-import qualified Example.Monad.MutuallyRecursive
-import qualified Example.Monad.Quantifiers
-import qualified Example.Monad.QuantifierElimination
-import qualified Example.Monad.ToSMTLib
-import qualified Example.Monad.Tuple
-import qualified Example.Monad.ParserInterface
+--import qualified Example.Monad.DataTypes
+-- import qualified Example.Monad.FuncModel
+-- import qualified Example.Monad.MutuallyRecursive
+-- import qualified Example.Monad.ParserInterface
+-- import qualified Example.Monad.QuantifierElimination
+-- import qualified Example.Monad.Quantifiers
+-- import qualified Example.Monad.ToSMTLib
+-- import qualified Example.Monad.Tuple
 
-import System.Environment
+import           System.Environment
 
 examples =
   [ ("4queens"
@@ -21,30 +20,30 @@ examples =
   , ("all4queens"
      , Example.Monad.Queens4All.run
      )
-  , ("datatypes"
-    , Example.Monad.DataTypes.run
-    )
-  , ("funcModel"
-    , Example.Monad.FuncModel.run
-    )
-  , ("mutuallyRecursive"
-    , Example.Monad.MutuallyRecursive.run
-    )
-  , ("quantifiers"
-    , Example.Monad.Quantifiers.run
-    )
-  , ("quantifierElimination"
-    , Example.Monad.QuantifierElimination.run
-    )
-  , ("smtlib"
-    , Example.Monad.ToSMTLib.run
-    )
-  , ("tuple"
-    , Example.Monad.Tuple.run
-    )
-  , ("parserInterface"
-    , Example.Monad.ParserInterface.run
-    )
+  -- , ("datatypes"
+  --   , Example.Monad.DataTypes.run
+  --   )
+  -- , ("funcModel"
+  --   , Example.Monad.FuncModel.run
+  --   )
+  -- , ("mutuallyRecursive"
+  --   , Example.Monad.MutuallyRecursive.run
+  --   )
+  -- , ("quantifiers"
+  --   , Example.Monad.Quantifiers.run
+  --   )
+  -- , ("quantifierElimination"
+  --   , Example.Monad.QuantifierElimination.run
+  --   )
+  -- , ("smtlib"
+  --   , Example.Monad.ToSMTLib.run
+  --   )
+  -- , ("tuple"
+  --   , Example.Monad.Tuple.run
+  --   )
+  -- , ("parserInterface"
+  --   , Example.Monad.ParserInterface.run
+  --   )
   ]
 
 runExample :: String -> IO ()

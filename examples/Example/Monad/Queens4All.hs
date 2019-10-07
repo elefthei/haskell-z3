@@ -3,12 +3,12 @@ module Example.Monad.Queens4All
   ( run )
   where
 
-import Control.Applicative
-import Control.Monad ( join )
-import Data.Maybe
-import qualified Data.Traversable as T
+import           Control.Applicative
+import           Control.Monad       (join)
+import           Data.Maybe
+import qualified Data.Traversable    as T
 
-import Z3.Monad
+import           Z3.Monad
 
 run :: IO ()
 run = do
@@ -48,6 +48,8 @@ script = do
   q4 <- mkFreshIntVar "q4"
   _1 <- mkIntNum (1::Integer)
   _4 <- mkIntNum (4::Integer)
+
+  mkXor _1 _4
   -- the ith-queen is in the ith-row.
   -- qi is the column of the ith-queen
   assert =<< mkAnd =<< T.sequence
