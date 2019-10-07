@@ -1556,7 +1556,7 @@ mkFpIsPos :: MonadZ3 z3 => AST -> z3 AST
 mkFpIsPos = liftFun1 Base.mkFpIsPos
 
 mkFpIsZero :: MonadZ3 z3 => AST -> z3 AST
-mkFpIsZero = liftFun1 Base.mkFpIsPos
+mkFpIsZero = liftFun1 Base.mkFpIsZero
 
 mkFpAbs :: MonadZ3 z3 => AST -> z3 AST
 mkFpAbs = liftFun1 Base.mkFpAbs
