@@ -1573,8 +1573,8 @@ mkFpDiv = liftFun3 Base.mkFpDiv
 mkFpMul :: MonadZ3 z3 => AST -> AST -> AST -> z3 AST
 mkFpMul = liftFun3 Base.mkFpMul
 
-mkFpRem :: MonadZ3 z3 => AST -> AST -> AST -> z3 AST
-mkFpRem = liftFun3 Base.mkFpRem
+mkFpRem :: MonadZ3 z3 => AST -> AST -> z3 AST
+mkFpRem = liftFun2 Base.mkFpRem
 
 mkFpNeg :: MonadZ3 z3 => AST -> z3 AST
 mkFpNeg = liftFun1 Base.mkFpNeg

@@ -1769,8 +1769,8 @@ mkFpDiv = liftFun3 z3_mk_fpa_div
 mkFpMul :: Context -> AST -> AST -> AST -> IO AST
 mkFpMul = liftFun3 z3_mk_fpa_mul
 
-mkFpRem :: Context -> AST -> AST -> AST -> IO AST
-mkFpRem = liftFun3 z3_mk_fpa_rem
+mkFpRem :: Context -> AST -> AST -> IO AST
+mkFpRem = liftFun2 z3_mk_fpa_rem
 
 mkFpNeg :: Context -> AST -> IO AST
 mkFpNeg = liftFun1 z3_mk_fpa_neg
