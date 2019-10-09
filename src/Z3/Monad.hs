@@ -248,6 +248,7 @@ module Z3.Monad
   , mkFpLt
   , mkFpMax
   , mkFpMin
+  , mkFpRound
 
   -- * Accessors
   , getSymbolString
@@ -1599,6 +1600,9 @@ mkFpMax = liftFun2 Base.mkFpMax
 
 mkFpMin :: MonadZ3 z3 => AST -> AST -> z3 AST
 mkFpMin = liftFun2 Base.mkFpMin
+
+mkFpRound :: MonadZ3 z3 => AST -> AST -> z3 AST
+mkFpRound = liftFun2 Base.mkFpRound
 
 ---------------------------------------------------------------------
 -- Accessors

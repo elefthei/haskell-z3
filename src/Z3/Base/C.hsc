@@ -1671,7 +1671,13 @@ foreign import ccall unsafe "Z3_mk_fpa_min"
     z3_mk_fpa_min :: Ptr Z3_context
                   -> Ptr Z3_ast -- ^ t1
                   -> Ptr Z3_ast -- ^ t2                      
-                  -> IO (Ptr Z3_ast)                     
+                  -> IO (Ptr Z3_ast)
+
+foreign import ccall unsafe "Z3_mk_fpa_round_to_integral"
+    z3_mk_fpa_round_to_integral :: Ptr Z3_context
+                                -> Ptr Z3_ast -- ^ rm 
+                                -> Ptr Z3_ast -- ^ t2                      
+                                -> IO (Ptr Z3_ast)                                          
                     
                     
 

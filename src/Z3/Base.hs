@@ -289,7 +289,8 @@ module Z3.Base (
   , mkFpLeq
   , mkFpLt
   , mkFpMax
-  , mkFpMin 
+  , mkFpMin
+  , mkFpRound
   
   -- * Accessors
   , getSymbolString
@@ -1775,6 +1776,9 @@ mkFpRem = liftFun2 z3_mk_fpa_rem
 mkFpNeg :: Context -> AST -> IO AST
 mkFpNeg = liftFun1 z3_mk_fpa_neg
 
+mkFpRound :: Context -> AST -> AST -> IO AST
+mkFpRound = liftFun2 z3_mk_fpa_round_to_integral 
+          
 -- Comparisons
 
 mkFpEq :: Context -> AST -> AST -> IO AST
