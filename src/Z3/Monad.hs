@@ -251,6 +251,8 @@ module Z3.Monad
   , mkFpRound
   , mkBvToFp
   , mkFpToBv
+  , mkFpExp
+  , mkFpSig
 
   -- * Accessors
   , getSymbolString
@@ -1611,6 +1613,12 @@ mkBvToFp = liftFun3 Base.mkBvToFp
 
 mkFpToBv :: MonadZ3 z3 => AST -> AST -> Word -> z3 AST
 mkFpToBv = liftFun3 Base.mkFpToBv
+
+mkFpExp :: MonadZ3 z3 => AST -> Bool -> z3 AST
+mkFpExp = liftFun2 Base.mkFpExp
+
+mkFpSig :: MonadZ3 z3 => AST -> z3 AST
+mkFpSig = liftFun1 Base.mkFpSig
 
 ---------------------------------------------------------------------
 -- Accessors

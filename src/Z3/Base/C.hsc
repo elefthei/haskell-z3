@@ -1691,7 +1691,20 @@ foreign import ccall unsafe "Z3_mk_fpa_to_sbv"
                      -> Ptr Z3_ast -- ^ rounding mode
                      -> Ptr Z3_ast -- ^ fp 
                      -> CUInt -- ^ size
-                     -> IO (Ptr Z3_ast)                              
+                     -> IO (Ptr Z3_ast)
+
+foreign import ccall unsafe "Z3_fpa_get_numeral_exponent_bv"
+    z3_fpa_get_numeral_exponent_bv :: Ptr Z3_context
+                                   -> Ptr Z3_ast -- ^ fp 
+                                   -> Z3_bool -- ^ bias
+                                   -> IO (Ptr Z3_ast)
+
+foreign import ccall unsafe "Z3_fpa_get_numeral_significand_bv"
+     z3_fpa_get_numeral_significand_bv :: Ptr Z3_context
+                                       -> Ptr Z3_ast -- ^ fp 
+                                       -> IO (Ptr Z3_ast)
+                                      
+                                      
                                    
                     
 
