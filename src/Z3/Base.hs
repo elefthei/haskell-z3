@@ -1780,8 +1780,8 @@ mkFpNeg = liftFun1 z3_mk_fpa_neg
 mkFpRound :: Context -> AST -> AST -> IO AST
 mkFpRound = liftFun2 z3_mk_fpa_round_to_integral
 
-mkBvToFp :: Context -> AST -> Sort -> IO AST
-mkBvToFp = liftFun2 z3_mk_fpa_to_fp_bv
+mkBvToFp :: Context -> AST -> AST -> Sort -> IO AST
+mkBvToFp = liftFun3 z3_mk_fpa_to_fp_signed
           
 -- Comparisons
 
