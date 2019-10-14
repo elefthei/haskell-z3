@@ -292,6 +292,7 @@ module Z3.Base (
   , mkFpMin
   , mkFpRound
   , mkBvToFp
+  , mkFpToBv
     
   -- * Accessors
   , getSymbolString
@@ -1782,7 +1783,10 @@ mkFpRound = liftFun2 z3_mk_fpa_round_to_integral
 
 mkBvToFp :: Context -> AST -> AST -> Sort -> IO AST
 mkBvToFp = liftFun3 z3_mk_fpa_to_fp_signed
-          
+
+mkFpToBv :: Context -> AST -> AST -> Word -> IO AST
+mkFpToBv = liftFun3 z3_mk_fpa_to_sbv
+           
 -- Comparisons
 
 mkFpEq :: Context -> AST -> AST -> IO AST

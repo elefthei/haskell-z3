@@ -250,6 +250,7 @@ module Z3.Monad
   , mkFpMin
   , mkFpRound
   , mkBvToFp
+  , mkFpToBv
 
   -- * Accessors
   , getSymbolString
@@ -1607,6 +1608,9 @@ mkFpRound = liftFun2 Base.mkFpRound
 
 mkBvToFp :: MonadZ3 z3 => AST -> AST -> Sort -> z3 AST
 mkBvToFp = liftFun3 Base.mkBvToFp
+
+mkFpToBv :: MonadZ3 z3 => AST -> AST -> Word -> z3 AST
+mkFpToBv = liftFun3 Base.mkFpToBv
 
 ---------------------------------------------------------------------
 -- Accessors
