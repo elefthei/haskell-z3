@@ -295,6 +295,7 @@ module Z3.Base (
   , mkFpToBv
   , mkFpExp
   , mkFpSig
+  , mkFpIEEEBv    
     
   -- * Accessors
   , getSymbolString
@@ -1793,7 +1794,10 @@ mkFpExp :: Context -> AST -> Bool -> IO AST
 mkFpExp = liftFun2 z3_fpa_get_numeral_exponent_bv
 
 mkFpSig :: Context -> AST -> IO AST
-mkFpSig = liftFun1 z3_fpa_get_numeral_significand_bv          
+mkFpSig = liftFun1 z3_fpa_get_numeral_significand_bv
+
+mkFpIEEEBv :: Context -> AST -> IO AST
+mkFpIEEEBv = liftFun1 z3_mk_fpa_to_ieee_bv
            
 -- Comparisons
 

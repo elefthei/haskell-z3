@@ -253,6 +253,7 @@ module Z3.Monad
   , mkFpToBv
   , mkFpExp
   , mkFpSig
+  , mkFpIEEEBv
 
   -- * Accessors
   , getSymbolString
@@ -1619,6 +1620,9 @@ mkFpExp = liftFun2 Base.mkFpExp
 
 mkFpSig :: MonadZ3 z3 => AST -> z3 AST
 mkFpSig = liftFun1 Base.mkFpSig
+
+mkFpIEEEBv :: MonadZ3 z3 => AST -> z3 AST
+mkFpIEEEBv = liftFun1 Base.mkFpIEEEBv
 
 ---------------------------------------------------------------------
 -- Accessors
