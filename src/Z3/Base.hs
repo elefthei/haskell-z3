@@ -271,6 +271,7 @@ module Z3.Base (
   , mkFpRtn
   , mkFpRtp
   , mkFpRtz
+  , mkFpRoundToNearestTiesToEven
   , mkFpIsInf
   , mkFpIsNan
   , mkFpIsNeg
@@ -1740,7 +1741,10 @@ mkFpRtp = liftFun0 z3_mk_fpa_rtp
 
 mkFpRtz :: Context -> IO AST
 mkFpRtz = liftFun0 z3_mk_fpa_rtz          
-                
+
+mkFpRoundToNearestTiesToEven :: Context -> IO AST
+mkFpRoundToNearestTiesToEven = liftFun0 z3_mk_fpa_round_nearest_ties_to_even
+                               
 -- Checking properties
 
 mkFpIsInf :: Context -> AST -> IO AST

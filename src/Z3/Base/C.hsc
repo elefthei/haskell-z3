@@ -1556,7 +1556,10 @@ foreign import ccall unsafe "Z3_mk_fpa_rtp"
     z3_mk_fpa_rtp :: Ptr Z3_context -> IO (Ptr Z3_ast)
 
 foreign import ccall unsafe "Z3_mk_fpa_rtz"
-    z3_mk_fpa_rtz :: Ptr Z3_context -> IO (Ptr Z3_ast)                     
+    z3_mk_fpa_rtz :: Ptr Z3_context -> IO (Ptr Z3_ast)
+
+foreign import ccall unsafe "Z3_mk_fpa_round_nearest_ties_to_even"
+    z3_mk_fpa_round_nearest_ties_to_even :: Ptr Z3_context -> IO (Ptr Z3_ast)
                      
 -- Checking properties of fps                     
 
@@ -1708,8 +1711,4 @@ foreign import ccall unsafe "Z3_mk_fpa_to_ieee_bv"
      z3_mk_fpa_to_ieee_bv :: Ptr Z3_context
                           -> Ptr Z3_ast -- ^ fp 
                           -> IO (Ptr Z3_ast)
-                                          
-                                      
-                                   
-                    
 
