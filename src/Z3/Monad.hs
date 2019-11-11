@@ -230,6 +230,7 @@ module Z3.Monad
   , mkFpRtp
   , mkFpRtz
   , mkFpRoundToNearestTiesToEven
+  , mkFpGetSign
   , mkFpIsInf
   , mkFpIsNan
   , mkFpIsNeg
@@ -1552,6 +1553,9 @@ mkFpRtz = liftScalar Base.mkFpRtz
 
 mkFpRoundToNearestTiesToEven :: MonadZ3 z3 => z3 AST
 mkFpRoundToNearestTiesToEven = liftScalar Base.mkFpRoundToNearestTiesToEven
+
+mkFpGetSign :: MonadZ3 z3 => AST -> z3 AST
+mkFpGetSign = liftFun1 Base.mkFpGetSign
 
 mkFpIsInf :: MonadZ3 z3 => AST -> z3 AST
 mkFpIsInf = liftFun1 Base.mkFpIsInf

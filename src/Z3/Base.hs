@@ -274,6 +274,7 @@ module Z3.Base (
   , mkFpRoundToNearestTiesToEven
   , mkFpIsInf
   , mkFpIsNan
+  , mkFpGetSign
   , mkFpIsNeg
   , mkFpIsPos
   , mkFpIsZero
@@ -1746,6 +1747,9 @@ mkFpRoundToNearestTiesToEven :: Context -> IO AST
 mkFpRoundToNearestTiesToEven = liftFun0 z3_mk_fpa_round_nearest_ties_to_even
                                
 -- Checking properties
+
+mkFpGetSign :: Context -> AST -> IO AST
+mkFpGetSign = liftFun1 z3_fpa_get_numeral_sign_bv
 
 mkFpIsInf :: Context -> AST -> IO AST
 mkFpIsInf = liftFun1 z3_mk_fpa_is_infinite

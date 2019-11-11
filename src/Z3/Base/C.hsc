@@ -1621,6 +1621,7 @@ foreign import ccall unsafe "Z3_mk_fpa_mul"
                   -> Ptr Z3_ast -- ^ t2                      
                   -> IO (Ptr Z3_ast)
 
+
 foreign import ccall unsafe "Z3_mk_fpa_rem"
     z3_mk_fpa_rem :: Ptr Z3_context
                   -> Ptr Z3_ast -- ^ t1
@@ -1706,6 +1707,11 @@ foreign import ccall unsafe "Z3_fpa_get_numeral_significand_bv"
      z3_fpa_get_numeral_significand_bv :: Ptr Z3_context
                                        -> Ptr Z3_ast -- ^ fp 
                                        -> IO (Ptr Z3_ast)
+
+foreign import ccall unsafe "Z3_fpa_get_numeral_sign_bv"
+     z3_fpa_get_numeral_sign_bv :: Ptr Z3_context
+                                -> Ptr Z3_ast -- ^ fp 
+                                -> IO (Ptr Z3_ast)                                          
 
 foreign import ccall unsafe "Z3_mk_fpa_to_ieee_bv"
      z3_mk_fpa_to_ieee_bv :: Ptr Z3_context
