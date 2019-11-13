@@ -293,7 +293,8 @@ module Z3.Base (
   , mkFpMax
   , mkFpMin
   , mkFpRound
-  , mkBvToFp
+  , mkSBvToFp
+  , mkUBvToFp    
   , mkFpToBv
   , mkFpExp
   , mkFpSig
@@ -1792,8 +1793,11 @@ mkFpNeg = liftFun1 z3_mk_fpa_neg
 mkFpRound :: Context -> AST -> AST -> IO AST
 mkFpRound = liftFun2 z3_mk_fpa_round_to_integral
 
-mkBvToFp :: Context -> AST -> AST -> Sort -> IO AST
-mkBvToFp = liftFun3 z3_mk_fpa_to_fp_signed
+mkSBvToFp :: Context -> AST -> AST -> Sort -> IO AST
+mkSBvToFp = liftFun3 z3_mk_fpa_to_fp_signed
+
+mkUBvToFp :: Context -> AST -> AST -> Sort -> IO AST
+mkUBvToFp = liftFun3 z3_mk_fpa_to_fp_unsigned           
 
 mkFpToBv :: Context -> AST -> AST -> Word -> IO AST
 mkFpToBv = liftFun3 z3_mk_fpa_to_sbv

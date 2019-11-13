@@ -1690,6 +1690,13 @@ foreign import ccall unsafe "Z3_mk_fpa_to_fp_signed"
                            -> Ptr Z3_sort -- ^ fp sort
                            -> IO (Ptr Z3_ast)
 
+foreign import ccall unsafe "Z3_mk_fpa_to_fp_unsigned"
+    z3_mk_fpa_to_fp_unsigned :: Ptr Z3_context
+                             -> Ptr Z3_ast -- ^ rounding mode
+                             -> Ptr Z3_ast -- ^ bv
+                             -> Ptr Z3_sort -- ^ fp sort
+                             -> IO (Ptr Z3_ast)                              
+
 foreign import ccall unsafe "Z3_mk_fpa_to_sbv"
     z3_mk_fpa_to_sbv :: Ptr Z3_context
                      -> Ptr Z3_ast -- ^ rounding mode
