@@ -1502,6 +1502,9 @@ foreign import ccall unsafe "Z3_fixedpoint_query_relations"
 foreign import ccall unsafe "Z3_mk_fpa_sort_double"
     z3_mk_fpa_sort_double :: Ptr Z3_context -> IO (Ptr Z3_sort)
 
+foreign import ccall unsafe "Z3_mk_fpa_sort_single"
+    z3_mk_fpa_sort_single :: Ptr Z3_context -> IO (Ptr Z3_sort)
+
 -- Variables and numbers 
 
 foreign import ccall unsafe "Z3_mk_fpa_numeral_double"
@@ -1509,6 +1512,12 @@ foreign import ccall unsafe "Z3_mk_fpa_numeral_double"
                              -> CDouble -- ^ Amt to make 
                              -> Ptr Z3_sort -- ^ Sort 
                              -> IO (Ptr Z3_ast)
+
+foreign import ccall unsafe "Z3_mk_fpa_numeral_float"
+    z3_mk_fpa_numeral_float :: Ptr Z3_context
+                            -> CFloat -- ^ Amt to make
+                            -> Ptr Z3_sort -- ^ Sort
+                            -> IO (Ptr Z3_ast)
 
 foreign import ccall unsafe "Z3_mk_fpa_numeral_int"
     z3_mk_fpa_numeral_int :: Ptr Z3_context
@@ -1683,6 +1692,13 @@ foreign import ccall unsafe "Z3_mk_fpa_round_to_integral"
                                 -> Ptr Z3_ast -- ^ t2                      
                                 -> IO (Ptr Z3_ast)
 
+foreign import ccall unsafe "Z3_mk_fpa_to_fp_float"
+    z3_mk_fpa_to_fp_float :: Ptr Z3_context
+                          -> Ptr Z3_ast -- ^ rounding mode
+                          -> Ptr Z3_ast -- ^ other float term
+                          -> Ptr Z3_sort -- ^ new fp sort
+                          -> IO (Ptr Z3_ast)
+
 foreign import ccall unsafe "Z3_mk_fpa_to_fp_signed"
     z3_mk_fpa_to_fp_signed :: Ptr Z3_context
                            -> Ptr Z3_ast -- ^ rounding mode
@@ -1701,6 +1717,13 @@ foreign import ccall unsafe "Z3_mk_fpa_to_sbv"
     z3_mk_fpa_to_sbv :: Ptr Z3_context
                      -> Ptr Z3_ast -- ^ rounding mode
                      -> Ptr Z3_ast -- ^ fp 
+                     -> CUInt -- ^ size
+                     -> IO (Ptr Z3_ast)
+
+foreign import ccall unsafe "Z3_mk_fpa_to_ubv"
+    z3_mk_fpa_to_ubv :: Ptr Z3_context
+                     -> Ptr Z3_ast -- ^ rounding mode
+                     -> Ptr Z3_ast -- ^ fp
                      -> CUInt -- ^ size
                      -> IO (Ptr Z3_ast)
 

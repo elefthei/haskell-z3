@@ -259,7 +259,9 @@ module Z3.Base (
   , mkExistsConst
 
   -- * Floating point 
+  , mkFloatSort
   , mkDoubleSort
+  , mkFpFromFloat
   , mkFpFromDouble
   , mkFpFromInt
   , mkFpFromParts
@@ -295,7 +297,9 @@ module Z3.Base (
   , mkFpRound
   , mkSBvToFp
   , mkUBvToFp    
+  , mkFpToFp
   , mkFpToBv
+  , mkFpToUbv
   , mkFpExp
   , mkFpSig
   , mkFpIEEEBv    
@@ -477,7 +481,7 @@ import Data.Typeable ( Typeable )
 import Data.Word
 import Foreign hiding ( toBool, newForeignPtr )
 import Foreign.C
-  ( CDouble, CInt, CUInt, CLLong, CULLong, CString
+  ( CDouble, CFloat, CInt, CUInt, CLLong, CULLong, CString
   , peekCString
   , withCString )
 import Foreign.Concurrent
@@ -1706,8 +1710,14 @@ mkExistsConst = marshalMkQConst z3_mk_exists_const
 ---------------------------------------------------------------------
 -- Floating point
 
+mkFloatSort :: Context -> IO Sort
+mkFloatSort = liftFun0 z3_mk_fpa_sort_single
+
 mkDoubleSort :: Context -> IO Sort
 mkDoubleSort = liftFun0 z3_mk_fpa_sort_double
+
+mkFpFromFloat :: Context -> Float -> Sort -> IO AST
+mkFpFromFloat = liftFun2 z3_mk_fpa_numeral_float
 
 mkFpFromDouble :: Context -> Double -> Sort -> IO AST
 mkFpFromDouble = liftFun2 z3_mk_fpa_numeral_double
@@ -1793,6 +1803,9 @@ mkFpNeg = liftFun1 z3_mk_fpa_neg
 mkFpRound :: Context -> AST -> AST -> IO AST
 mkFpRound = liftFun2 z3_mk_fpa_round_to_integral
 
+mkFpToFp :: Context -> AST -> AST -> Sort -> IO AST
+mkFpToFp = liftFun3 z3_mk_fpa_to_fp_float
+
 mkSBvToFp :: Context -> AST -> AST -> Sort -> IO AST
 mkSBvToFp = liftFun3 z3_mk_fpa_to_fp_signed
 
@@ -1801,6 +1814,9 @@ mkUBvToFp = liftFun3 z3_mk_fpa_to_fp_unsigned
 
 mkFpToBv :: Context -> AST -> AST -> Word -> IO AST
 mkFpToBv = liftFun3 z3_mk_fpa_to_sbv
+
+mkFpToUbv :: Context -> AST -> AST -> Word -> IO AST
+mkFpToUbv = liftFun3 z3_mk_fpa_to_ubv
 
 mkFpExp :: Context -> AST -> Bool -> IO AST
 mkFpExp = liftFun2 z3_fpa_get_numeral_exponent_bv
@@ -3107,6 +3123,10 @@ instance Integral h => Marshal h CULLong where
   h2c i f = f (fromIntegral i)
 
 instance Marshal Double CDouble where
+  c2h _ = return . realToFrac
+  h2c d f = f (realToFrac d)
+
+instance Marshal Float CFloat where
   c2h _ = return . realToFrac
   h2c d f = f (realToFrac d)
 

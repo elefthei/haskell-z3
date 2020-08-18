@@ -217,7 +217,9 @@ module Z3.Monad
   , mkExistsConst
 
   -- * Floating point
+  , mkFloatSort
   , mkDoubleSort
+  , mkFpFromFloat
   , mkFpFromDouble
   , mkFpFromInt
   , mkFpFromParts
@@ -253,7 +255,9 @@ module Z3.Monad
   , mkFpRound
   , mkSBvToFp
   , mkUBvToFp
+  , mkFpToFp
   , mkFpToBv
+  , mkFpToUbv
   , mkFpExp
   , mkFpSig
   , mkFpIEEEBv
@@ -1519,6 +1523,12 @@ mkExists = liftFun4 Base.mkExists
 mkDoubleSort :: MonadZ3 z3 => z3 Sort
 mkDoubleSort = liftScalar Base.mkDoubleSort
 
+mkFloatSort :: MonadZ3 z3 => z3 Sort
+mkFloatSort = liftScalar Base.mkFloatSort
+
+mkFpFromFloat :: MonadZ3 z3 => Float -> Sort -> z3 AST
+mkFpFromFloat = liftFun2 Base.mkFpFromFloat
+
 mkFpFromDouble :: MonadZ3 z3 => Double -> Sort -> z3 AST
 mkFpFromDouble = liftFun2 Base.mkFpFromDouble
 
@@ -1624,8 +1634,14 @@ mkSBvToFp = liftFun3 Base.mkSBvToFp
 mkUBvToFp :: MonadZ3 z3 => AST -> AST -> Sort -> z3 AST
 mkUBvToFp = liftFun3 Base.mkSBvToFp
 
+mkFpToFp :: MonadZ3 z3 => AST -> AST -> Sort -> z3 AST
+mkFpToFp = liftFun3 Base.mkFpToFp
+
 mkFpToBv :: MonadZ3 z3 => AST -> AST -> Word -> z3 AST
 mkFpToBv = liftFun3 Base.mkFpToBv
+
+mkFpToUbv :: MonadZ3 z3 => AST -> AST -> Word -> z3 AST
+mkFpToUbv = liftFun3 Base.mkFpToUbv
 
 mkFpExp :: MonadZ3 z3 => AST -> Bool -> z3 AST
 mkFpExp = liftFun2 Base.mkFpExp
