@@ -20,6 +20,7 @@ examples =
   , ("all4queens"
      , Example.Monad.Queens4All.run
      )
+<<<<<<< HEAD
   -- , ("datatypes"
   --   , Example.Monad.DataTypes.run
   --   )

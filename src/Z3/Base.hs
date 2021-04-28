@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveDataTypeable         #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE PatternGuards              #-}
+{-# LANGUAGE NamedFieldPuns             #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
 
 -- |
 -- Module    : Z3.Base
@@ -59,6 +61,7 @@ module Z3.Base (
   , Symbol
   , AST
   , Sort
+  , TupleType(..)
   , FuncDecl
   , App
   , Pattern
@@ -75,6 +78,32 @@ module Z3.Base (
   , Goal
   -- ** Satisfiability result
   , Result(..)
+
+  -- * Algebraic Numbers
+  , algebraicIsValue
+  , algebraicIsPos
+  , algebraicIsNeg
+  , algebraicIsZero
+  , algebraicSign
+  , algebraicAdd
+  , algebraicSub
+  , algebraicMul
+  , algebraicDiv
+  , algebraicRoot
+  , algebraicPower
+  , algebraicLt
+  , algebraicGt
+  , algebraicLe
+  , algebraicGe
+  , algebraicEq
+  , algebraicNeq
+  , algebraicRoots
+  , algebraicEval
+
+  -- * Global Parameters
+  , globalParamSet
+  , globalParamResetAll
+  , globalParamGet
 
   -- * Create configuration
   , mkConfig
@@ -107,7 +136,14 @@ module Z3.Base (
   , mkBvSort
   , mkFiniteDomainSort
   , mkArraySort
+  , mkArraySortN
   , mkTupleSort
+  , mkTupleType
+  , mkTuple
+  , mkIndexTuple
+  , mkProjTuple
+  , mkEnumerationSort
+  , mkListSort
   , mkConstructor
   , mkDatatype
   , mkDatatypes
@@ -119,6 +155,8 @@ module Z3.Base (
   , mkConst
   , mkFreshFuncDecl
   , mkFreshConst
+  , mkRecFuncDecl
+  , addRecDef
   -- ** Helpers
   , mkVar
   , mkBoolVar
@@ -156,6 +194,7 @@ module Z3.Base (
   , mkDiv
   , mkMod
   , mkRem
+  , mkPower
   , mkLt
   , mkLe
   , mkGt
@@ -250,13 +289,54 @@ module Z3.Base (
   , mkBitvector
   , mkBvNum
 
+  -- * Sequences and regular expressions
+  , mkSeqSort
+  , isSeqSort
+  , mkReSort
+  , isReSort
+  , mkStringSort
+  , isStringSort
+  , mkString
+  , isString
+  , getString
+  , mkSeqEmpty
+  , mkSeqUnit
+  , mkSeqConcat
+  , mkSeqPrefix
+  , mkSeqSuffix
+  , mkSeqContains
+  , mkSeqExtract
+  , mkSeqReplace
+  , mkSeqAt
+  , mkSeqLength
+  , mkSeqIndex
+  , mkStrToInt
+  , mkIntToStr
+  , mkSeqToRe
+  , mkSeqInRe
+  , mkRePlus
+  , mkReStar
+  , mkReOption
+  , mkReUnion
+  , mkReConcat
+  , mkReRange
+  , mkReLoop
+  , mkReIntersect
+  , mkReComplement
+  , mkReEmpty
+  , mkReFull
+
   -- * Quantifiers
   , mkPattern
   , mkBound
   , mkForall
+  , mkForallW
   , mkExists
+  , mkExistsW
   , mkForallConst
+  , mkForallWConst
   , mkExistsConst
+  , mkExistsWConst
 
   -- * Floating point 
   , mkFloatSort
@@ -306,21 +386,33 @@ module Z3.Base (
     
   -- * Accessors
   , getSymbolString
+  , isEqSort
+  , getSortName
+  , sortToAst
+  , getSortId
   , getSortKind
   , getBvSortSize
+  , getFiniteDomainSortSize
+  , getTupleSortMkDecl
+  , getTupleSortNumFields
+  , getTupleSortFieldDecl
   , getDatatypeSortConstructors
   , getDatatypeSortRecognizers
   , getDatatypeSortConstructorAccessors
+  , mkAtMost
+  , mkAtLeast
   , getDeclName
   , getArity
   , getDomain
   , getRange
+  , getDeclNumParameters
   , appToAst
   , getAppDecl
   , getAppNumArgs
   , getAppArg
   , getAppArgs
   , getSort
+  , isWellSorted
   , getArraySortDomain
   , getArraySortRange
   , getBoolValue
@@ -328,6 +420,8 @@ module Z3.Base (
   , isApp
   , toApp
   , getNumeralString
+  , getNumerator
+  , getDenominator
   , simplify
   , simplifyEx
   , getIndexValue
@@ -349,10 +443,10 @@ module Z3.Base (
   , getBool
   , getInt
   , getReal
-  , getBv
 
   -- * Modifiers
   , substituteVars
+  , substitute
 
   -- * Models
   , modelEval
@@ -367,6 +461,7 @@ module Z3.Base (
   , getConsts
   , getFuncs
   , isAsArray
+  , isEqAST
   , addFuncInterp
   , addConstInterp
   , getAsArrayFuncDecl
@@ -440,6 +535,32 @@ module Z3.Base (
   , fixedpointGetAnswer
   , fixedpointGetAssertions
 
+  -- * Optimization
+  , Optimize (..)
+  , mkOptimize
+  , optimizeAssert
+  , optimizeAssertAndTrack
+  , optimizeAssertSoft
+  , optimizeMaximize
+  , optimizeMinimize
+  , optimizePush
+  , optimizePop
+  , optimizeCheck
+  , optimizeGetReasonUnknown
+  , optimizeGetModel
+  , optimizeGetUnsatCore
+  , optimizeSetParams
+  , optimizeGetLower
+  , optimizeGetUpper
+  , optimizeGetUpperAsVector
+  , optimizeGetLowerAsVector
+  , optimizeToString
+  , optimizeFromString
+  , optimizeFromFile
+  , optimizeGetHelp
+  , optimizeGetAssertions
+  , optimizeGetObjectives
+
   -- * Solvers
   , Logic(..)
   , mkSolver
@@ -453,9 +574,11 @@ module Z3.Base (
   , solverGetNumScopes
   , solverAssertCnstr
   , solverAssertAndTrack
+  , solverGetAssertions
   , solverCheck
   , solverCheckAssumptions
   , solverGetModel
+  , solverGetProof
   , solverGetUnsatCore
   , solverGetReasonUnknown
   , solverToString
@@ -464,6 +587,8 @@ module Z3.Base (
   ) where
 
 import Z3.Base.C
+import Z3.Common
+import Z3.RLock ( RLock, new, with)
 
 import Control.Applicative ( (<$>), (<*>), (<*), pure )
 import Control.Exception ( Exception, bracket, throw )
@@ -480,6 +605,7 @@ import qualified Data.Traversable as T
 import Data.Typeable ( Typeable )
 import Data.Word
 import Foreign hiding ( toBool, newForeignPtr )
+import Foreign.Storable ( peek )
 import Foreign.C
   ( CDouble, CFloat, CInt, CUInt, CLLong, CULLong, CString
   , peekCString
@@ -498,6 +624,7 @@ data Context =
     Context {
       unContext :: ForeignPtr Z3_context
     , refCount  :: !(IORef Word)
+    , lock :: RLock
     }
     deriving Eq
 
@@ -516,6 +643,17 @@ newtype AST = AST { unAST :: ForeignPtr Z3_ast }
 -- | A kind of AST representing /types/.
 newtype Sort = Sort { unSort :: ForeignPtr Z3_sort }
     deriving (Eq, Ord, Show)
+
+-- | A sort representing named tuples with associated functions
+data TupleType
+  = TupleType {
+      tupleSort :: Sort
+    , tupleCons :: FuncDecl                   -- ^ constructor function
+    , namedTupleProjs :: [(String, FuncDecl)] -- ^ projection functions
+    }
+
+tupleProjs :: TupleType -> [FuncDecl]
+tupleProjs = map snd . namedTupleProjs
 
 -- | A kind of AST representing function symbols.
 newtype FuncDecl = FuncDecl { unFuncDecl :: ForeignPtr Z3_func_decl }
@@ -612,12 +750,92 @@ data ASTKind
     | Z3_UNKNOWN_AST
     deriving (Eq, Show)
 
----------------------------------------------------------------------
--- * Configuration
 
--- TODO: Z3_global_param_set
--- TODO: Z3_global_param_reset_all
--- TODO: Z3_global_param_get
+---------------------------------------------------------------------
+-- * Algebraic Numbers
+
+algebraicIsValue :: Context -> AST -> IO Bool
+algebraicIsValue = liftFun1 z3_algebraic_is_value
+
+
+algebraicIsPos :: Context -> AST -> IO Bool
+algebraicIsPos = liftFun1 z3_algebraic_is_pos
+
+algebraicIsNeg :: Context -> AST -> IO Bool
+algebraicIsNeg = liftFun1 z3_algebraic_is_neg
+
+algebraicIsZero :: Context -> AST -> IO Bool
+algebraicIsZero = liftFun1 z3_algebraic_is_zero
+
+algebraicSign :: Context -> AST -> IO Int
+algebraicSign = liftFun1 z3_algebraic_sign
+
+algebraicAdd :: Context -> AST -> AST -> IO AST
+algebraicAdd = liftFun2 z3_algebraic_add
+
+algebraicSub :: Context -> AST -> AST -> IO AST
+algebraicSub = liftFun2 z3_algebraic_sub
+
+algebraicMul :: Context -> AST -> AST -> IO AST
+algebraicMul = liftFun2 z3_algebraic_mul
+
+algebraicDiv :: Context -> AST -> AST -> IO AST
+algebraicDiv = liftFun2 z3_algebraic_div
+
+algebraicRoot :: Context -> AST -> Int -> IO AST
+algebraicRoot = liftFun2 z3_algebraic_root
+
+algebraicPower :: Context -> AST -> Int -> IO AST
+algebraicPower = liftFun2 z3_algebraic_power
+
+algebraicLt :: Context -> AST -> AST -> IO Bool
+algebraicLt = liftFun2 z3_algebraic_lt
+
+algebraicGt :: Context -> AST -> AST -> IO Bool
+algebraicGt = liftFun2 z3_algebraic_gt
+
+algebraicLe :: Context -> AST -> AST -> IO Bool
+algebraicLe = liftFun2 z3_algebraic_le
+
+algebraicGe :: Context -> AST -> AST -> IO Bool
+algebraicGe = liftFun2 z3_algebraic_ge
+
+algebraicEq :: Context -> AST -> AST -> IO Bool
+algebraicEq = liftFun2 z3_algebraic_eq
+
+algebraicNeq :: Context -> AST -> AST -> IO Bool
+algebraicNeq = liftFun2 z3_algebraic_neq
+
+algebraicRoots :: Context -> AST -> [AST] -> IO [AST]
+algebraicRoots ctx p args = marshal z3_algebraic_roots ctx $ \f ->
+  h2c p $ \pPtr ->
+    marshalArrayLen args $ \argsNum argsArr ->
+      f pPtr argsNum argsArr
+
+algebraicEval :: Context -> AST -> [AST] -> IO Int
+algebraicEval ctx p args = marshal z3_algebraic_eval ctx $ \f ->
+  h2c p $ \pPtr ->
+    marshalArrayLen args $ \argsNum argsArr ->
+      f pPtr argsNum argsArr
+
+---------------------------------------------------------------------
+-- * Global Parameters
+
+globalParamSet :: String -> String -> IO ()
+globalParamSet param value =
+  withCString param $ \cParam ->
+    withCString value $ \cValue ->
+      z3_global_param_set cParam cValue
+
+globalParamResetAll :: IO ()
+globalParamResetAll = z3_global_param_reset_all
+
+globalParamGet :: String -> IO (Maybe String)
+globalParamGet param =
+  withCString param $ \cParam ->
+    alloca $ \cValuePtr ->
+      do success <- toBool <$> z3_global_param_get cParam cValuePtr
+         returnValueToMaybe success $ peekCString =<< peek cValuePtr
 
 ---------------------------------------------------------------------
 -- * Create configuration
@@ -661,6 +879,7 @@ mkContextWith mkCtx cfg = do
   count <- newIORef 1
   Context <$> newForeignPtr ctxPtr (contextDecRef ctxPtr count)
           <*> pure count
+          <*> Z3.RLock.new
 
 -- | Create a context using the given configuration.
 --
@@ -791,16 +1010,12 @@ mkFiniteDomainSort = liftFun2 z3_mk_finite_domain_sort
 mkArraySort :: Context -> Sort -> Sort -> IO Sort
 mkArraySort = liftFun2 z3_mk_array_sort
 
-{- TODO
-data TupleTyple
-  = TupleType {
-      tupleSort :: Sort
-    , tupleCons :: FunDecl
-    , tupleProj :: [FunDecl]
-    }
-
-mkTupleSort :: ... -> IO TupleType
--}
+-- | Create an array type with N arguments.
+mkArraySortN :: Context -> [Sort] -> Sort -> IO Sort
+mkArraySortN ctx argSorts rangeSort = marshal z3_mk_array_sort_n ctx $ \f ->
+  marshalArrayLen argSorts $ \nArgs argSortsPtr ->
+    h2c rangeSort $ \rangeSortPtr ->
+      f nArgs argSortsPtr rangeSortPtr
 
 -- | Create a tuple type
 --
@@ -823,14 +1038,91 @@ mkTupleSort c sym symSorts = withContextError c $ \cPtr ->
                                   outConstrPtr outProjsPtr
     outConstr <- peek outConstrPtr
     outProjs  <- peekArray n outProjsPtr
-    sort <- c2h c srtPtr
-    constrFd <- c2h c outConstr
-    projsFds <- mapM (c2h c) outProjs
-    return (sort, constrFd, projsFds)
+    tupleSort <- c2h c srtPtr
+    tupleCons <- c2h c outConstr
+    tupleProjs <- mapM (c2h c) outProjs
+    return (tupleSort, tupleCons, tupleProjs)
   where (syms, sorts) = unzip symSorts
 
--- TODO: Z3_mk_enumeration_sort
--- TODO: Z3_mk_list_sort
+-- | Like 'mkTupleSort' but wraps the result in a 'TupleType' record
+mkTupleType :: Context -> Symbol -> [(String, Sort)] -> IO TupleType
+mkTupleType ctx sym fs = do fs' <- flip zip (map snd fs) <$> mapM (mkStringSymbol ctx . fst) fs
+                            (tupleSort, tupleCons, tupleProjs) <- mkTupleSort ctx sym fs'
+                            let namedTupleProjs = zip (map fst fs) tupleProjs
+                            return $ TupleType {tupleSort, tupleCons, namedTupleProjs}
+
+-- | Create an instance of the tuple sort wrapped in 'TupleType'
+mkTuple :: Context -> TupleType -> [AST] -> IO AST
+mkTuple ctx TupleType{tupleCons} args = mkApp ctx tupleCons args
+
+-- | Project the i-th field of the given tuple,
+mkIndexTuple :: Context -> TupleType -> Int -> AST -> IO AST
+mkIndexTuple ctx tt i tup
+  | 0 <= i && i < length (tupleProjs tt) = mkApp ctx (tupleProjs tt !! i) [tup]
+  | otherwise                            = error "Invalid tuple index used."
+
+-- | Project a field of the given tuple by name,
+mkProjTuple :: Context -> TupleType -> String -> AST -> IO AST
+mkProjTuple ctx TupleType{namedTupleProjs} f tup = case lookup f namedTupleProjs of
+  Just proj -> mkApp ctx proj [tup]
+  Nothing   -> error "Invalid tuple field used."
+
+-- | Create a enumeration sort.
+--
+-- An enumeration sort with n elements. This function will also declare the functions corresponding to the enumerations:
+--
+-- * @enum_consts@: constants corresponding to the enumerated elements.
+-- * @enum_testers@: predicates testing if terms of the enumeration sort correspond to an enumeration.
+--
+mkEnumerationSort :: Context                           -- ^ logical context
+                  -> Symbol                            -- ^ name of the enumeration sort
+                  -> [Symbol]                          -- ^ names of the enumerated elements
+                  -> IO (Sort, [FuncDecl], [FuncDecl]) -- ^ the created enumeration sort, @enum_consts@, @enum_testers@
+mkEnumerationSort ctx sortName constNames = let hn = length constNames in
+  allocaArray hn $ \constDeclsPtr ->
+    allocaArray hn $ \testDeclsPtr ->
+      do s <- marshal z3_mk_enumeration_sort ctx $ \f ->
+                marshalArrayLen constNames $ \n constNamesPtr ->
+                  h2c sortName $ \sortNamePtr ->
+                    f sortNamePtr n constNamesPtr constDeclsPtr testDeclsPtr
+         constDecls <- peekArrayToHs ctx hn constDeclsPtr
+         testDecls <- peekArrayToHs ctx hn testDeclsPtr
+         return (s, constDecls, testDecls)
+
+-- | Create a list sort.
+--
+-- A list sort over elem_sort. This function declares the corresponding constructors and testers for lists:
+--
+-- * @nilDecl@: declaration for the empty list
+-- * @isnilDecl@:	test for the empty list
+-- * @consDecl@:	declaration for a cons cell
+-- * @isconsDecl@:	cons cell test
+-- * @headDecl@:	list head
+-- * @tailDecl@:	list tail
+mkListSort :: Context       -- ^ Context
+           -> Symbol        -- ^ name of the list sort
+           -> Sort          -- ^ sort of list elements
+           -> IO (Sort, FuncDecl, FuncDecl, FuncDecl, FuncDecl, FuncDecl, FuncDecl) -- ^ the created list sort, @nilDecl@
+                                                                                    -- @isnilDecl@, @consDecl@, @isconsDecl@
+                                                                                    -- @headDecl@, @tailDecl@
+mkListSort ctx sortName elemSort =
+  alloca $ \nilDeclPtr ->
+  alloca $ \isNilDeclPtr ->
+  alloca $ \consDeclPtr ->
+  alloca $ \isConsDeclPtr ->
+  alloca $ \headDeclPtr ->
+  alloca $ \tailDeclPtr ->
+  h2c sortName $ \sortNamePtr ->
+    h2c elemSort $ \elemSortPtr ->
+      do listSort <- marshal z3_mk_list_sort ctx $ \f ->
+           f sortNamePtr elemSortPtr nilDeclPtr isNilDeclPtr consDeclPtr isConsDeclPtr headDeclPtr tailDeclPtr
+         nilDecl <- c2h ctx =<< peek nilDeclPtr
+         isNilDecl <- c2h ctx =<< peek isNilDeclPtr
+         consDecl <- c2h ctx =<< peek consDeclPtr
+         isConsDecl <- c2h ctx =<< peek isConsDeclPtr
+         headDecl <- c2h ctx =<< peek headDeclPtr
+         tailDecl <- c2h ctx =<< peek tailDeclPtr
+         return (listSort, nilDecl, isNilDecl, consDecl, isConsDecl, headDecl, tailDecl)
 
 -- | Create a contructor
 mkConstructor :: Context                      -- ^ Context
@@ -939,6 +1231,33 @@ mkFreshConst :: Context -- ^ Logical context.
              -> Sort    -- ^ Sort of the constant.
              -> IO AST
 mkFreshConst = liftFun2 z3_mk_fresh_const
+
+-- | Declare a recursive function.
+mkRecFuncDecl :: Context   -- ^ Logical context.
+            -> Symbol   -- ^ Name of the function (or constant).
+            -> [Sort]   -- ^ Function domain (empty for constants).
+            -> Sort     -- ^ Return sort of the function.
+            -> IO FuncDecl
+mkRecFuncDecl ctx smb dom rng =
+  marshal z3_mk_rec_func_decl ctx $ \f ->
+    h2c smb $ \ptrSym ->
+    marshalArrayLen dom $ \domNum domArr ->
+    h2c rng $ \ptrRange ->
+      f ptrSym domNum domArr ptrRange
+
+-- | Define the body of a recursive function.
+-- Declare it first with mkRecFuncDecl
+addRecDef :: Context -- ^ Logical context.
+          -> FuncDecl -- ^ Declaration of the function being defined.
+          -> [AST] -- ^ Constants to use as the function's formal arguments.
+          -> AST   -- ^ Body of the function to define
+          -> IO ()
+addRecDef ctx decl args body =
+  marshal z3_add_rec_def ctx $ \f ->
+    h2c decl $ \declPtr ->
+    marshalArrayLen args $ \argsNum argsArr ->
+    h2c body $ \bodyPtr ->
+      f declPtr argsNum argsArr bodyPtr
 
 -------------------------------------------------
 -- ** Helpers
@@ -1109,7 +1428,9 @@ mkMod = liftFun2 z3_mk_mod
 mkRem :: Context -> AST -> AST -> IO AST
 mkRem = liftFun2 z3_mk_rem
 
--- TODO: Z3_mk_power
+-- | Create an AST node representing arg1 ^ arg2.
+mkPower :: Context -> AST -> AST -> IO AST
+mkPower = liftFun2 z3_mk_power
 
 -- | Create less than.
 mkLt :: Context -> AST -> AST -> IO AST
@@ -1572,6 +1893,208 @@ mkBvNum :: Integral i => Context -> Int    -- ^ bit-width
 mkBvNum ctx s n = mkIntegral ctx n =<< mkBvSort ctx s
 
 ---------------------------------------------------------------------
+-- Sequences and regular expressions
+
+-- | Create a sequence sort out of the sort for the elements.
+mkSeqSort :: Context -> Sort -> IO Sort
+mkSeqSort = liftFun1 z3_mk_seq_sort
+
+-- | Check if s is a sequence sort.
+isSeqSort :: Context -> Sort -> IO Bool
+isSeqSort = liftFun1 z3_is_seq_sort
+
+-- | Create a regular expression sort out of a sequence sort.
+mkReSort :: Context -> Sort -> IO Sort
+mkReSort = liftFun1 z3_mk_re_sort
+
+-- | Check if s is a regular expression sort.
+isReSort :: Context -> Sort -> IO Bool
+isReSort = liftFun1 z3_is_re_sort
+
+-- | Create a sort for 8 bit strings. This function creates a sort for ASCII
+-- strings. Each character is 8 bits.
+mkStringSort :: Context -> IO Sort
+mkStringSort = liftFun0 z3_mk_string_sort
+
+-- | Check if s is a string sort.
+isStringSort :: Context -> Sort -> IO Bool
+isStringSort = liftFun1 z3_is_string_sort
+
+-- | Create a string constant out of the string that is passed in.
+mkString :: Context -> String -> IO AST
+mkString = liftFun1 z3_mk_string
+
+-- | Determine if s is a string constant.
+isString :: Context -> AST -> IO Bool
+isString = liftFun1 z3_is_string
+
+-- | Retrieve the string constant stored in s.
+getString :: Context -> AST -> IO String
+getString = liftFun1 z3_get_string
+
+-- | Create an empty sequence of the sequence sort seq.
+mkSeqEmpty :: Context -> Sort -> IO AST
+mkSeqEmpty = liftFun1 z3_mk_seq_empty
+
+-- | Create a unit sequence of a.
+mkSeqUnit :: Context -> AST -> IO AST
+mkSeqUnit = liftFun1 z3_mk_seq_unit
+
+-- | Concatenate sequences.
+mkSeqConcat :: (Integral int) => Context -> int -> [AST] -> IO AST
+mkSeqConcat c i as
+  | i <  0            = error "Z3.Base.mkSeqConcat: negative size"
+  | i >= 0 && null as = error "Z3.Base.mkSeqConcet: empty list of expressions"
+  | otherwise         = marshal z3_mk_seq_concat c $ marshalArrayLen as
+
+-- | Check if prefix is a prefix of s.
+mkSeqPrefix :: Context
+            -> AST -- ^ prefix
+            -> AST -- ^ s
+            -> IO AST
+mkSeqPrefix = liftFun2 z3_mk_seq_prefix
+
+-- | Check if suffix is a suffix of s.
+mkSeqSuffix :: Context
+            -> AST -- ^ suffix
+            -> AST -- ^ s
+            -> IO AST
+mkSeqSuffix = liftFun2 z3_mk_seq_suffix
+
+-- | Check if container contains containee.
+mkSeqContains :: Context
+              -> AST -- ^ container
+              -> AST -- ^ containee
+              -> IO AST
+mkSeqContains = liftFun2 z3_mk_seq_contains
+
+-- | Extract subsequence starting at offset of length.
+mkSeqExtract :: Context
+             -> AST -- ^ s
+             -> AST -- ^ offset
+             -> AST -- ^ length
+             -> IO AST
+mkSeqExtract = liftFun3 z3_mk_seq_extract
+
+-- | Replace the first occurrence of src with dst in s.
+mkSeqReplace :: Context
+             -> AST -- ^ s
+             -> AST -- ^ src
+             -> AST -- ^ dst
+             -> IO AST
+mkSeqReplace = liftFun3 z3_mk_seq_replace
+
+-- | Retrieve from s the unit sequence positioned at position index.
+mkSeqAt :: Context
+        -> AST -- ^ s
+        -> AST -- ^ index
+        -> IO AST
+mkSeqAt = liftFun2 z3_mk_seq_at
+
+-- | Return the length of the sequence s.
+mkSeqLength :: Context
+            -> AST -- ^ s
+            -> IO AST
+mkSeqLength = liftFun1 z3_mk_seq_length
+
+-- | Return index of first occurrence of substr in s starting from offset
+-- offset. If s does not contain substr, then the value is -1, if offset is the
+-- length of s, then the value is -1 as well. The function is under-specified if
+-- offset is negative or larger than the length of s.
+mkSeqIndex :: Context
+           -> AST -- ^ s
+           -> AST -- ^ substr
+           -> AST -- ^ offset
+           -> IO AST
+mkSeqIndex = liftFun3 z3_mk_seq_index
+
+-- | Convert string to integer.
+mkStrToInt :: Context -> AST -> IO AST
+mkStrToInt = liftFun1 z3_mk_str_to_int
+
+-- | Integer to string conversion.
+mkIntToStr :: Context -> AST -> IO AST
+mkIntToStr = liftFun1 z3_mk_int_to_str
+
+-- | Create a regular expression that accepts the sequence.
+mkSeqToRe :: Context -> AST -> IO AST
+mkSeqToRe = liftFun1 z3_mk_seq_to_re
+
+-- | Check if seq is in the language generated by the regular expression re.
+mkSeqInRe :: Context
+          -> AST -- ^ seq
+          -> AST -- ^ re
+          -> IO AST
+mkSeqInRe = liftFun2 z3_mk_seq_in_re
+
+-- | Create the regular language re+.
+mkRePlus :: Context -> AST -> IO AST
+mkRePlus = liftFun1 z3_mk_re_plus
+
+-- | Create the regular language re*.
+mkReStar :: Context -> AST -> IO AST
+mkReStar = liftFun1 z3_mk_re_star
+
+-- | Create the regular language [re].
+mkReOption :: Context -> AST -> IO AST
+mkReOption = liftFun1 z3_mk_re_option
+
+-- | Create the union of the regular languages.
+mkReUnion :: (Integral int) => Context -> int -> [AST] -> IO AST
+mkReUnion c i as
+  | i <  0            = error "Z3.Base.mkReUnion: negative size"
+  | i >= 0 && null as = error "Z3.Base.mkReUnion: empty list of expressions"
+  | otherwise         = marshal z3_mk_re_union c $ marshalArrayLen as
+
+-- | Create the concatenation of the regular languages.
+mkReConcat :: (Integral int) => Context -> int -> [AST] -> IO AST
+mkReConcat c i as
+  | i <  0            = error "Z3.Base.mkReConcat: negative size"
+  | i >= 0 && null as = error "Z3.Base.mkReConcat: empty list of expressions"
+  | otherwise         = marshal z3_mk_re_concat c $ marshalArrayLen as
+
+-- | Create the range regular expression over two sequences of length 1.
+mkReRange :: Context
+          -> AST -- ^ lo
+          -> AST -- ^ hi
+          -> IO AST
+mkReRange = liftFun2 z3_mk_re_range
+
+-- | Create a regular expression loop. The supplied regular expression r is
+-- repeated between lo and hi times. The lo should be below hi with one
+-- exception: when supplying the value hi as 0, the meaning is to repeat the
+-- argument r at least lo number of times, and with an unbounded upper bound.
+mkReLoop :: (Integral int)
+         => Context
+         -> AST -- ^ r
+         -> int -- ^ lo
+         -> int -- ^ hi
+         -> IO AST
+mkReLoop c a i j
+  | i < 0     = error "Z3.Base.mkReLoop: negative size"
+  | i < 0     = error "Z3.Base.mkReLoop: empty list of expressions"
+  | otherwise = liftFun3 z3_mk_re_loop c a i j
+
+-- | Create the intersection of the regular languages.
+mkReIntersect :: (Integral int) => Context -> int -> [AST] -> IO AST
+mkReIntersect c i as
+  | i <  0            = error "Z3.Base.mkReIntersect: negative size"
+  | i >= 0 && null as = error "Z3.Base.mkReIntersect: empty list of expressions"
+  | otherwise         = marshal z3_mk_re_intersect c $ marshalArrayLen as
+
+-- | Create the complement of the regular language.
+mkReComplement :: Context -> AST -> IO AST
+mkReComplement = liftFun1 z3_mk_re_complement
+
+-- | Create an empty regular expression of sort re.
+mkReEmpty :: Context -> Sort -> IO AST
+mkReEmpty = liftFun1 z3_mk_re_empty
+
+-- | Create an universal regular expression of sort re.
+mkReFull :: Context -> Sort -> IO AST
+mkReFull = liftFun1 z3_mk_re_full
+
+ ---------------------------------------------------------------------
 -- Quantifiers
 
 -- | Create a pattern for quantifier instantiation.
@@ -1612,20 +2135,21 @@ type MkZ3Quantifier = Ptr Z3_context -> CUInt
                       -> Ptr Z3_ast
                       -> IO (Ptr Z3_ast)
 
--- TODO: Allow the user to specify the quantifier weight!
 marshalMkQ :: MkZ3Quantifier
           -> Context
+          -> Int
           -> [Pattern]
           -> [Symbol]
           -> [Sort]
           -> AST
           -> IO AST
-marshalMkQ z3_mk_Q ctx pats x s body = marshal z3_mk_Q ctx $ \f ->
+marshalMkQ z3_mk_Q ctx weight pats x s body = marshal z3_mk_Q ctx $ \f ->
   marshalArrayLen pats $ \n patsArr ->
   marshalArray x $ \xArr ->
   marshalArray s $ \sArr ->
+  h2c weight $ \weightC ->
   h2c body $ \bodyPtr ->
-    f 0 n patsArr len sArr xArr bodyPtr
+    f weightC n patsArr len sArr xArr bodyPtr
   where len
           | l == 0        = error "Z3.Base.mkQuantifier:\
               \ quantifier with 0 bound variables"
@@ -1633,6 +2157,14 @@ marshalMkQ z3_mk_Q ctx pats x s body = marshal z3_mk_Q ctx $ \f ->
               \ different number of symbols and sorts"
           | otherwise     = fromIntegral l
           where l = length s
+-- | 'mkForall' with weight 0 (the default).
+mkForall :: Context
+          -> [Pattern]  -- ^ Instantiation patterns (see 'mkPattern').
+          -> [Symbol]   -- ^ Bound (quantified) variables /xs/.
+          -> [Sort]     -- ^ Sorts of the bound variables.
+          -> AST        -- ^ Body of the quantifier.
+          -> IO AST
+mkForall = flip mkForallW 0
 
 -- | Create a forall formula.
 --
@@ -1641,19 +2173,25 @@ marshalMkQ z3_mk_Q ctx pats x s body = marshal z3_mk_Q ctx $ \f ->
 -- Z3 applies the convention that the last element in /xs/ refers to the
 -- variable with index 0, the second to last element of /xs/ refers to the
 -- variable with index 1, etc.
-mkForall :: Context
+mkForallW :: Context
+          -> Int        -- ^ quantifiers are associated with weights indicating the importance of using the quantifier during instantiation. By default, pass the weight 0.
           -> [Pattern]  -- ^ Instantiation patterns (see 'mkPattern').
           -> [Symbol]   -- ^ Bound (quantified) variables /xs/.
           -> [Sort]     -- ^ Sorts of the bound variables.
           -> AST        -- ^ Body of the quantifier.
           -> IO AST
-mkForall = marshalMkQ z3_mk_forall
+mkForallW = marshalMkQ z3_mk_forall
+
 
 -- | Create an exists formula.
 --
--- Similar to 'mkForall'.
+-- Similar to 'mkForallW'.
+mkExistsW :: Context -> Int -> [Pattern] -> [Symbol] -> [Sort] -> AST -> IO AST
+mkExistsW = marshalMkQ z3_mk_exists
+
+-- | `mkExistsW` with weight 0 (the default).
 mkExists :: Context -> [Pattern] -> [Symbol] -> [Sort] -> AST -> IO AST
-mkExists = marshalMkQ z3_mk_exists
+mkExists = flip mkExistsW 0
 
 -- TODO: Z3_mk_quantifier
 -- TODO: Z3_mk_quantifier_ex
@@ -1669,40 +2207,53 @@ type MkZ3QuantifierConst = Ptr Z3_context
 
 marshalMkQConst :: MkZ3QuantifierConst
                   -> Context
+                  -> Int
                   -> [Pattern]
                   -> [App]
                   -> AST
                 -> IO AST
-marshalMkQConst z3_mk_Q_const ctx pats apps body =
+marshalMkQConst z3_mk_Q_const ctx weight pats apps body =
   marshal z3_mk_Q_const ctx $ \f ->
     marshalArrayLen pats $ \patsNum patsArr ->
     marshalArray    apps $ \appsArr ->
+    h2c weight $ \weightC ->
     h2c body $ \bodyPtr ->
-      f 0 len appsArr patsNum patsArr bodyPtr
+      f weightC len appsArr patsNum patsArr bodyPtr
   where len
           | l == 0        = error "Z3.Base.mkQuantifierConst:\
               \ quantifier with 0 bound variables"
           | otherwise     = fromIntegral l
           where l = length apps
--- TODO: Allow the user to specify the quantifier weight!
 
 -- | Create a universal quantifier using a list of constants that will form the
 -- set of bound variables.
-mkForallConst :: Context
+mkForallWConst :: Context
+              -> Int       -- ^ quantifiers are associated with weights indicating the importance of using the quantifier during instantiation. By default, pass the weight 0.
+
               -> [Pattern] -- ^ Instantiation patterns (see 'mkPattern').
               -> [App]     -- ^ Constants to be abstracted into bound variables.
               -> AST       -- ^ Quantifier body.
               -> IO AST
-mkForallConst = marshalMkQConst z3_mk_forall_const
+mkForallWConst = marshalMkQConst z3_mk_forall_const
+
+
+-- | 'mkForallWConst' with weight set to 0 (the default).
+mkForallConst :: Context -> [Pattern] -> [App] -> AST -> IO AST
+mkForallConst = flip mkForallWConst 0
 
 -- | Create a existential quantifier using a list of constants that will form
 -- the set of bound variables.
-mkExistsConst :: Context
+mkExistsWConst :: Context
+              -> Int       -- ^ quantifiers are associated with weights indicating the importance of using the quantifier during instantiation. By default, pass the weight 0.
               -> [Pattern] -- ^ Instantiation patterns (see 'mkPattern').
               -> [App]     -- ^ Constants to be abstracted into bound variables.
               -> AST       -- ^ Quantifier body.
               -> IO AST
-mkExistsConst = marshalMkQConst z3_mk_exists_const
+mkExistsWConst = marshalMkQConst z3_mk_exists_const
+
+-- | 'mkForallWConst' with weight set to 0 (the default).
+mkExistsConst :: Context -> [Pattern] -> [App] -> AST -> IO AST
+mkExistsConst = flip mkExistsWConst 0
 
 -- TODO: Z3_mk_quantifier_const
 -- TODO: Z3_mk_quantifier_const_ex
@@ -1861,13 +2412,21 @@ mkFpMin = liftFun2 z3_mk_fpa_min
 getSymbolString :: Context -> Symbol -> IO String
 getSymbolString = liftFun1 z3_get_symbol_string
 
--- TODO: Z3_get_sort_name
+-- | Return the sort name as a symbol.
+getSortName :: Context -> Sort -> IO Symbol
+getSortName = liftFun1 z3_get_sort_name
 
--- TODO: Z3_get_sort_id
+-- | Convert a Z3_sort into Z3_ast. This is just type casting.
+sortToAst :: Context -> Sort -> IO AST
+sortToAst = liftFun1 z3_sort_to_ast
 
--- TODO: Z3_sort_to_ast
+-- | Return a unique identifier for s.
+getSortId :: Context -> Sort -> IO Int
+getSortId = liftFun1 z3_get_sort_id
 
--- TODO: Z3_is_eq_sort
+-- | Compare sorts.
+isEqSort :: Context -> Sort -> Sort -> IO Bool
+isEqSort = liftFun2 z3_is_eq_sort
 
 -- | Return the sort kind of the given sort.
 getSortKind :: Context -> Sort -> IO SortKind
@@ -1893,7 +2452,13 @@ getSortKind ctx sort = toSortKind <$> liftFun1 z3_get_sort_kind ctx sort
 getBvSortSize :: Context -> Sort -> IO Int
 getBvSortSize = liftFun1 z3_get_bv_sort_size
 
--- TODO: Z3_get_finite_domain_sort_size
+getFiniteDomainSortSize :: Context -> Sort -> IO (Maybe Word64)
+getFiniteDomainSortSize ctx sort = alloca $ \sizePtr ->
+  withContext ctx $ \ctxPtr ->
+    h2c sort $ \sortPtr ->
+      do success <- toBool <$> (z3_get_finite_domain_sort_size ctxPtr sortPtr sizePtr)
+         returnValueToMaybe success $ (fromIntegral <$> peek sizePtr)
+
 
 -- TODO: Z3_get_array_sort_size
 
@@ -1903,11 +2468,14 @@ getArraySortDomain = liftFun1 z3_get_array_sort_domain
 getArraySortRange :: Context -> Sort -> IO Sort
 getArraySortRange = liftFun1 z3_get_array_sort_range
 
--- TODO: Z3_get_tuple_sort_mk_decl
+getTupleSortMkDecl :: Context -> Sort -> IO FuncDecl
+getTupleSortMkDecl = liftFun1 z3_get_tuple_sort_mk_decl
 
--- TODO: Z3_get_tuple_sort_num_fields
+getTupleSortNumFields :: Context -> Sort -> IO Int
+getTupleSortNumFields = liftFun1 z3_get_tuple_sort_num_fields
 
--- TODO: Z3_get_tuple_sort_field_decl
+getTupleSortFieldDecl :: Context -> Sort -> Int -> IO FuncDecl
+getTupleSortFieldDecl = liftFun2 z3_get_tuple_sort_field_decl
 
 -- | Get list of constructors for datatype.
 getDatatypeSortConstructors :: Context
@@ -1962,6 +2530,28 @@ getDatatypeSortConstructorAccessors c dtSort =
 
 -- TODO: Z3_get_relation_column
 
+mkAtMost :: Context -> [AST] -> Int -> IO AST
+mkAtMost _ctx [] _n = error "Z3.Base.mkAtMost: empty list of expressions"
+mkAtMost  ctx es  n =
+  marshal z3_mk_atmost ctx $ \f ->
+  marshalArrayLen es $ \esLen esArr ->
+  h2c n $ \n' ->
+  f esLen esArr n'
+
+mkAtLeast :: Context -> [AST] -> Int -> IO AST
+mkAtLeast _ctx [] _n = error "Z3.Base.mkAtLeast: empty list of expressions"
+mkAtLeast  ctx es  n =
+  marshal z3_mk_atleast ctx $ \f ->
+  marshalArrayLen es $ \esLen esArr ->
+  h2c n $ \n' ->
+  f esLen esArr n'
+
+-- TODO: Z3_mk_pble
+
+-- TODO: Z3_mk_pbge
+
+-- TODO: Z3_mk_pbeq
+
 -- TODO: Z3_func_decl_to_ast
 
 -- TODO: Z3_is_eq_func_decl
@@ -1992,7 +2582,8 @@ getDomain = liftFun2 z3_get_domain
 getRange :: Context -> FuncDecl -> IO Sort
 getRange = liftFun1 z3_get_range
 
--- TODO: Z3_get_decl_num_parameters
+getDeclNumParameters :: Context -> FuncDecl -> IO Int
+getDeclNumParameters = liftFun1 z3_get_decl_num_parameters
 
 -- TODO: Z3_get_decl_parameter_kind
 
@@ -2042,7 +2633,8 @@ getAppArgs ctx a = do
 getSort :: Context -> AST -> IO Sort
 getSort = liftFun1 z3_get_sort
 
--- TODO: Z3_is_well_sorted
+isWellSorted :: Context -> AST -> IO Bool
+isWellSorted = liftFun1 z3_is_well_sorted
 
 -- TODO: fix doc
 -- | Return Z3_L_TRUE if a is true, Z3_L_FALSE if it is false, and Z3_L_UNDEF
@@ -2093,9 +2685,17 @@ getNumeralString = liftFun1 z3_get_numeral_string
 
 -- TODO: Z3_get_numeral_decimal_string
 
--- TODO: Z3_get_numerator
+-- | Return the numerator (as a numeral AST) of a numeral AST of sort Real.
+--
+-- Reference: <https://z3prover.github.io/api/html/group__capi.html#ga2d37084eb47ea0ab19638a3407ce610b>
+getNumerator :: Context -> AST -> IO AST
+getNumerator = liftFun1 z3_get_numerator
 
--- TODO: Z3_get_denominator
+-- | Return the denominator (as a numeral AST) of a numeral AST of sort Real.
+--
+-- Reference: <https://z3prover.github.io/api/html/group__capi.html#ga07549939888e8fdfc8e0fde1776c31a7>
+getDenominator :: Context -> AST -> IO AST
+getDenominator = liftFun1 z3_get_denominator
 
 -- TODO: Z3_get_numeral_small
 
@@ -2211,18 +2811,10 @@ getReal c a = parse <$> getNumeralString c a
         parseDen ('/':sj) = read sj
         parseDen _        = error "Z3.Base.getReal: no parse"
 
--- | Read the 'Integer' value from an 'AST' of sort /bit-vector/.
---
--- See 'mkBv2int'.
-getBv :: Context -> AST
-                 -> Bool  -- ^ signed?
-                 -> IO Integer
-getBv c a signed = getInt c =<< mkBv2int c a signed
-
 ---------------------------------------------------------------------
 -- Modifiers
 
--- TODO Modifiers
+-- TODO Z3_update_term
 
 substituteVars :: Context -> AST -> [AST] -> IO AST
 substituteVars ctx a vars =
@@ -2230,6 +2822,18 @@ substituteVars ctx a vars =
     h2c a $ \aPtr ->
     marshalArrayLen vars $ \varsNum varsArr ->
       f aPtr varsNum varsArr
+
+substitute :: Context -> AST -> [(AST, AST)] -> IO AST
+substitute ctx a substs =
+  let froms = map fst substs
+      tos   = map snd substs
+  in marshal z3_substitute ctx $ \f ->
+    h2c a $ \aPtr ->
+    marshalArrayLen froms $ \fromsLen fromsArr ->
+    marshalArray    tos   $ \         tosArr   ->
+      f aPtr fromsLen fromsArr tosArr
+
+-- TODO Z3_translate
 
 ---------------------------------------------------------------------
 -- Models
@@ -2316,6 +2920,9 @@ getAsArrayFuncDecl = liftFun1 z3_get_as_array_func_decl
 -- if the a is an as-array AST node.
 isAsArray :: Context -> AST -> IO Bool
 isAsArray = liftFun1 z3_is_as_array
+
+isEqAST :: Context -> AST -> AST -> IO Bool
+isEqAST = liftFun2 z3_is_eq_ast
 
 addFuncInterp :: Context -> Model -> FuncDecl -> AST -> IO FuncInterp
 addFuncInterp = liftFun3 z3_add_func_interp
@@ -2425,11 +3032,11 @@ evalReal ctx m ast = eval ctx m ast >>= T.traverse (getReal ctx)
 -- The flag /signed/ decides whether the bit-vector value is
 -- interpreted as a signed or unsigned integer.
 --
--- See 'modelEval' and 'getBv'.
+-- See 'modelEval' and 'mkBv2int'.
 evalBv :: Context -> Bool -- ^ signed?
                   -> EvalAst Integer
 evalBv ctx signed m ast =
-  eval ctx m ast >>= T.traverse (\a -> getBv ctx a signed)
+  mkBv2int ctx ast signed >>= eval ctx m >>= T.traverse (\a -> getInt ctx a)
 
 -- | Evaluate a /collection/ of AST nodes in the given model.
 evalT :: Traversable t => Context -> Model -> t AST -> IO (Maybe (t AST))
@@ -2610,7 +3217,7 @@ parseSMTLib2String :: Context
                    -> [Sort]     -- ^ sorts
                    -> [Symbol]   -- ^ declaration names
                    -> [FuncDecl] -- ^ declarations
-                   -> IO AST
+                   -> IO [AST]
 parseSMTLib2String ctx str sortNames sorts declNames decls =
   marshal z3_parse_smtlib2_string ctx $ \f ->
     withCString str $ \cstr ->
@@ -2626,7 +3233,7 @@ parseSMTLib2File :: Context
                  -> [Sort]     -- ^ sorts
                  -> [Symbol]   -- ^ declaration names
                  -> [FuncDecl] -- ^ declarations
-                 -> IO AST
+                 -> IO [AST]
 parseSMTLib2File ctx file sortNames sorts declNames decls =
   marshal z3_parse_smtlib2_string ctx $ \f ->
     withCString file $ \fileName ->
@@ -2685,7 +3292,7 @@ z3Error cd = throw . Z3Error cd
 checkError :: Ptr Z3_context -> IO a -> IO a
 checkError cPtr m = do
   m <* (z3_get_error_code cPtr >>= throwZ3Exn)
-  where getErrStr i  = peekCString =<< z3_get_error_msg i
+  where getErrStr i  = peekCString =<< z3_get_error_msg cPtr i
         throwZ3Exn i = when (i /= z3_ok) $ getErrStr i >>= z3Error (toZ3Error i)
 
 ---------------------------------------------------------------------
@@ -2757,6 +3364,94 @@ fixedpointGetAnswer = liftFun1 z3_fixedpoint_get_answer
 
 fixedpointGetAssertions :: Context -> Fixedpoint -> IO [AST]
 fixedpointGetAssertions = liftFun1 z3_fixedpoint_get_assertions
+
+---------------------------------------------------------------------
+-- Optimization facilities
+
+newtype Optimize = Optimize { unOptimize :: ForeignPtr Z3_optimize }
+    deriving Eq
+
+instance Marshal Optimize (Ptr Z3_optimize) where
+  c2h = mkC2hRefCount Optimize z3_optimize_inc_ref z3_optimize_dec_ref
+  h2c fp = withForeignPtr (unOptimize fp)
+
+mkOptimize :: Context -> IO Optimize
+mkOptimize = liftFun0 z3_mk_optimize
+
+optimizeAssert :: Context -> Optimize -> AST -> IO ()
+optimizeAssert = liftFun2 z3_optimize_assert
+
+optimizeAssertAndTrack :: Context -> Optimize -> AST -> AST -> IO ()
+optimizeAssertAndTrack = liftFun3 z3_optimize_assert_and_track
+
+optimizeAssertSoft :: Context -> Optimize -> AST -> String -> Symbol -> IO Int
+optimizeAssertSoft ctx opt ast str sym =
+  marshal z3_optimize_assert_soft ctx $ \f ->
+    h2c opt $ \optPtr ->
+    h2c ast $ \astPtr ->
+    withCString str $ \strPtr ->
+    h2c sym $ \symPtr ->
+      f optPtr astPtr strPtr symPtr
+
+optimizeMaximize :: Context -> Optimize -> AST -> IO Int
+optimizeMaximize = liftFun2 z3_optimize_maximize
+
+optimizeMinimize :: Context -> Optimize -> AST -> IO Int
+optimizeMinimize = liftFun2 z3_optimize_minimize
+
+optimizePush :: Context -> Optimize -> IO ()
+optimizePush = liftFun1 z3_optimize_push
+
+optimizePop :: Context -> Optimize -> IO ()
+optimizePop = liftFun1 z3_optimize_pop
+
+optimizeCheck :: Context -> Optimize -> [AST] -> IO Result
+optimizeCheck ctx opt ss = marshal z3_optimize_check ctx $ \f ->
+  h2c opt $ \optPtr ->
+  marshalArrayLen ss $ \ssNum ssPtr ->
+    f optPtr ssNum ssPtr
+
+optimizeGetReasonUnknown :: Context -> Optimize -> IO String
+optimizeGetReasonUnknown = liftFun1 z3_optimize_get_reason_unknown
+
+optimizeGetModel :: Context -> Optimize -> IO Model
+optimizeGetModel = liftFun1 z3_optimize_get_model
+
+optimizeGetUnsatCore :: Context -> Optimize -> IO [AST]
+optimizeGetUnsatCore = liftFun1 z3_optimize_get_unsat_core
+
+optimizeSetParams :: Context -> Optimize -> Params -> IO ()
+optimizeSetParams = liftFun2 z3_optimize_set_params
+
+optimizeGetLower :: Context -> Optimize -> Int -> IO AST
+optimizeGetLower = liftFun2 z3_optimize_get_lower
+
+optimizeGetUpper :: Context -> Optimize -> Int -> IO AST
+optimizeGetUpper = liftFun2 z3_optimize_get_upper
+
+optimizeGetUpperAsVector :: Context -> Optimize -> Int -> IO [AST]
+optimizeGetUpperAsVector = liftFun2 z3_optimize_get_upper_as_vector
+
+optimizeGetLowerAsVector :: Context -> Optimize -> Int -> IO [AST]
+optimizeGetLowerAsVector = liftFun2 z3_optimize_get_lower_as_vector
+
+optimizeToString :: Context -> Optimize -> IO String
+optimizeToString = liftFun1 z3_optimize_to_string
+
+optimizeFromString :: Context -> Optimize -> String -> IO ()
+optimizeFromString = liftFun2 z3_optimize_from_string
+
+optimizeFromFile :: Context -> Optimize -> String -> IO ()
+optimizeFromFile = liftFun2 z3_optimize_from_file
+
+optimizeGetHelp :: Context -> Optimize -> IO String
+optimizeGetHelp = liftFun1 z3_optimize_get_help
+
+optimizeGetAssertions :: Context -> Optimize -> IO [AST]
+optimizeGetAssertions = liftFun1 z3_optimize_get_assertions
+
+optimizeGetObjectives :: Context -> Optimize -> IO [AST]
+optimizeGetObjectives = liftFun1 z3_optimize_get_objectives
 
 -- AST vectors ?
 
@@ -2937,6 +3632,9 @@ solverAssertCnstr = liftFun2 z3_solver_assert
 solverAssertAndTrack :: Context -> Solver -> AST -> AST -> IO ()
 solverAssertAndTrack = liftFun3 z3_solver_assert_and_track
 
+solverGetAssertions :: Context -> Solver -> IO [AST]
+solverGetAssertions = liftFun1 z3_solver_get_assertions
+
 -- | Check whether the assertions in a given solver are consistent or not.
 solverCheck :: Context -> Solver -> IO Result
 solverCheck ctx solver = marshal z3_solver_check ctx $ h2c solver
@@ -2959,6 +3657,14 @@ solverGetModel ctx solver = marshal z3_solver_get_model ctx $ \f ->
   h2c solver $ \solverPtr ->
     f solverPtr
 
+-- | Retrieve the proof for the last 'solverCheck' or 'solverCheckAssumptions'.
+--
+-- The error handler is invoked if a proof is not available because
+-- the commands above were not invoked for the given solver,
+-- or if the result was different from 'Unsat' (so 'Sat' does not have a proof).
+solverGetProof :: Context -> Solver -> IO AST
+solverGetProof = liftFun1 z3_solver_get_proof
+
 -- | Retrieve the unsat core for the last 'solverCheckAssumptions'; the unsat core is a subset of the assumptions
 solverGetUnsatCore :: Context -> Solver -> IO [AST]
 solverGetUnsatCore = liftFun1 z3_solver_get_unsat_core
@@ -2974,6 +3680,7 @@ solverToString = liftFun1 z3_solver_to_string
 -------------------------------------------------
 -- ** Helpers
 
+-- | Call 'solverCheck' and based on the result also call 'solverGetModel'.
 solverCheckAndGetModel :: Context -> Solver -> IO (Result, Maybe Model)
 solverCheckAndGetModel ctx solver =
   do res <- solverCheck ctx solver
@@ -2999,7 +3706,7 @@ using 'marshal'. Worst case scenario, write the marshalling code yourself.
 -- withIntegral x f = f (fromIntegral x)
 
 withContext :: Context -> (Ptr Z3_context -> IO r) -> IO r
-withContext c = withForeignPtr (unContext c)
+withContext c f = Z3.RLock.with (lock c) $ withForeignPtr (unContext c) f
 
 withContextError :: Context -> (Ptr Z3_context -> IO r) -> IO r
 withContextError c f = withContext c $ \cPtr -> checkError cPtr (f cPtr)
@@ -3076,9 +3783,8 @@ mkC2hRefCount mk incRef decRef ctx xPtr =
   withContext ctx $ \ctxPtr -> do
     incRef ctxPtr xPtr
     contextIncRef ctx
-    let xFinalizer = do
-        decRef ctxPtr xPtr
-        contextDecRef ctxPtr (refCount ctx)
+    let xFinalizer = Z3.RLock.with (lock ctx) $ (do decRef ctxPtr xPtr
+                                                    contextDecRef ctxPtr (refCount ctx))
     mk <$> newForeignPtr xPtr xFinalizer
 
 dummy_inc_ref :: Z3IncRefFun c
@@ -3286,3 +3992,4 @@ unBool False = z3_false
 ptrToMaybe :: Ptr a -> Maybe (Ptr a)
 ptrToMaybe ptr | ptr == nullPtr = Nothing
                | otherwise      = Just ptr
+

@@ -1,4 +1,3 @@
-
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 -- |
@@ -77,6 +76,8 @@ module Z3.Monad
   , mkConst
   , mkFreshConst
   , mkFreshFuncDecl
+  , mkRecFuncDecl
+  , addRecDef
   -- ** Helpers
   , mkVar
   , mkBoolVar
@@ -114,6 +115,7 @@ module Z3.Monad
   , mkDiv
   , mkMod
   , mkRem
+  , mkPower
   , mkLt
   , mkLe
   , mkGt
@@ -208,13 +210,54 @@ module Z3.Monad
   , mkBitvector
   , mkBvNum
 
+  -- * Sequences and regular expressions
+  , mkSeqSort
+  , isSeqSort
+  , mkReSort
+  , isReSort
+  , mkStringSort
+  , isStringSort
+  , mkString
+  , isString
+  , getString
+  , mkSeqEmpty
+  , mkSeqUnit
+  , mkSeqConcat
+  , mkSeqPrefix
+  , mkSeqSuffix
+  , mkSeqContains
+  , mkSeqExtract
+  , mkSeqReplace
+  , mkSeqAt
+  , mkSeqLength
+  , mkSeqIndex
+  , mkStrToInt
+  , mkIntToStr
+  , mkSeqToRe
+  , mkSeqInRe
+  , mkRePlus
+  , mkReStar
+  , mkReOption
+  , mkReUnion
+  , mkReConcat
+  , mkReRange
+  , mkReLoop
+  , mkReIntersect
+  , mkReComplement
+  , mkReEmpty
+  , mkReFull
+
   -- * Quantifiers
   , mkPattern
   , mkBound
   , mkForall
+  , mkForallW
   , mkExists
+  , mkExistsW
   , mkForallConst
+  , mkForallWConst
   , mkExistsConst
+  , mkExistsWConst
 
   -- * Floating point
   , mkFloatSort
@@ -264,11 +307,20 @@ module Z3.Monad
 
   -- * Accessors
   , getSymbolString
+  , getSortName
+  , getSortId
+  , sortToAst
+  , isEqSort
   , getSortKind
   , getBvSortSize
+  , getTupleSortMkDecl
+  , getTupleSortNumFields
+  , getTupleSortFieldDecl
   , getDatatypeSortConstructors
   , getDatatypeSortRecognizers
   , getDatatypeSortConstructorAccessors
+  , mkAtMost
+  , mkAtLeast
   , getDeclName
   , getArity
   , getDomain
@@ -286,6 +338,8 @@ module Z3.Monad
   , isApp
   , toApp
   , getNumeralString
+  , getNumerator
+  , getDenominator
   , simplify
   , simplifyEx
   , getIndexValue
@@ -307,10 +361,10 @@ module Z3.Monad
   , getBool
   , getInt
   , getReal
-  , getBv
 
   -- * Modifiers
   , substituteVars
+  , substitute
 
   -- * Models
   , modelEval
@@ -325,6 +379,7 @@ module Z3.Monad
   , getConsts
   , getFuncs
   , isAsArray
+  , isEqAST
   , addFuncInterp
   , addConstInterp
   , getAsArrayFuncDecl
@@ -389,6 +444,7 @@ module Z3.Monad
   , getVersion
 
   -- * Fixedpoint
+  , MonadFixedpoint(..)
   , Fixedpoint
   , fixedpointAddRule
   , fixedpointSetParams
@@ -396,6 +452,32 @@ module Z3.Monad
   , fixedpointQueryRelations
   , fixedpointGetAnswer
   , fixedpointGetAssertions
+
+  -- * Optimization
+  , MonadOptimize(..)
+  , Optimize
+  , optimizeAssert
+  , optimizeAssertAndTrack
+  , optimizeAssertSoft
+  , optimizeMaximize
+  , optimizeMinimize
+  , optimizePush
+  , optimizePop
+  , optimizeCheck
+  , optimizeGetReasonUnknown
+  , optimizeGetModel
+  , optimizeGetUnsatCore
+  , optimizeSetParams
+  , optimizeGetLower
+  , optimizeGetUpper
+  , optimizeGetUpperAsVector
+  , optimizeGetLowerAsVector
+  , optimizeToString
+  , optimizeFromString
+  , optimizeFromFile
+  , optimizeGetHelp
+  , optimizeGetAssertions
+  , optimizeGetObjectives
 
   -- * Solvers
   , solverGetHelp
@@ -406,9 +488,11 @@ module Z3.Monad
   , solverGetNumScopes
   , solverAssertCnstr
   , solverAssertAndTrack
+  , solverGetAssertions
   , solverCheck
   , solverCheckAssumptions
   , solverGetModel
+  , solverGetProof
   , solverGetUnsatCore
   , solverGetReasonUnknown
   , solverToString
@@ -426,30 +510,57 @@ module Z3.Monad
   , reset
   , getNumScopes
   )
-  where
+where
 
-import           Z3.Base                    (AST, ASTKind (..),
-                                             ASTPrintMode (..), App,
-                                             ApplyResult, Constructor,
-                                             Fixedpoint, FuncDecl, FuncEntry,
-                                             FuncInterp, FuncModel (..), Goal,
-                                             Logic (..), Model, Params, Pattern,
-                                             Result (..), Solver, Sort,
-                                             SortKind (..), Symbol, Tactic,
-                                             Version (..))
-import qualified Z3.Base                    as Base
 import           Z3.Opts
+import           Z3.Base                        ( Symbol
+                                                , AST
+                                                , Sort
+                                                , TupleType
+                                                , FuncDecl
+                                                , App
+                                                , Pattern
+                                                , Constructor
+                                                , Model
+                                                , FuncInterp
+                                                , FuncEntry
+                                                , FuncModel(..)
+                                                , Result(..)
+                                                , Logic(..)
+                                                , ASTPrintMode(..)
+                                                , Version(..)
+                                                , Params
+                                                , Solver
+                                                , Fixedpoint
+                                                , Optimize
+                                                , SortKind(..)
+                                                , ASTKind(..)
+                                                , Tactic
+                                                , ApplyResult
+                                                , Goal
+                                                )
+import qualified Z3.Base                       as Base
 
-import           Control.Applicative        (Applicative)
-import           Control.Monad.Fix          (MonadFix)
-import           Control.Monad.IO.Class     (MonadIO, liftIO)
-import           Control.Monad.Trans.Reader (ReaderT, asks, runReaderT)
-import           Data.Fixed                 (Fixed, HasResolution)
-import           Data.Int                   (Int64)
-import           Data.List.NonEmpty         (NonEmpty)
-import           Data.Traversable           (Traversable)
-import qualified Data.Traversable           as T
-import           Data.Word                  (Word, Word64)
+import           Control.Applicative            ( Applicative )
+import           Data.Fixed                     ( Fixed
+                                                , HasResolution
+                                                )
+import           Control.Monad.Fail
+import           Control.Monad.IO.Class         ( MonadIO
+                                                , liftIO
+                                                )
+import           Control.Monad.Trans.Reader     ( ReaderT(..)
+                                                , runReaderT
+                                                , asks
+                                                )
+import           Control.Monad.Fix              ( MonadFix )
+import           Data.Int                       ( Int64 )
+import           Data.List.NonEmpty             ( NonEmpty )
+import           Data.Word                      ( Word
+                                                , Word64
+                                                )
+import           Data.Traversable               ( Traversable )
+import qualified Data.Traversable              as T
 
 ---------------------------------------------------------------------
 -- The Z3 monad-class
@@ -457,6 +568,10 @@ import           Data.Word                  (Word, Word64)
 class (Applicative m, Monad m, MonadIO m) => MonadZ3 m where
   getSolver  :: m Base.Solver
   getContext :: m Base.Context
+
+instance MonadZ3 m => MonadZ3 (ReaderT r m) where
+  getSolver  = ReaderT $ const getSolver
+  getContext = ReaderT $ const getContext
 
 -------------------------------------------------
 -- Lifting
@@ -471,73 +586,124 @@ liftFun1 f a = getContext >>= \ctx -> liftIO (f ctx a)
 liftFun2 :: MonadZ3 z3 => (Base.Context -> a -> b -> IO c) -> a -> b -> z3 c
 liftFun2 f a b = getContext >>= \ctx -> liftIO (f ctx a b)
 
-liftFun3 :: MonadZ3 z3 => (Base.Context -> a -> b -> c -> IO d)
-                              -> a -> b -> c -> z3 d
+liftFun3
+  :: MonadZ3 z3 => (Base.Context -> a -> b -> c -> IO d) -> a -> b -> c -> z3 d
 liftFun3 f a b c = getContext >>= \ctx -> liftIO (f ctx a b c)
 
-liftFun4 :: MonadZ3 z3 => (Base.Context -> a -> b -> c -> d -> IO e)
-                -> a -> b -> c -> d -> z3 e
+liftFun4
+  :: MonadZ3 z3
+  => (Base.Context -> a -> b -> c -> d -> IO e)
+  -> a
+  -> b
+  -> c
+  -> d
+  -> z3 e
 liftFun4 f a b c d = getContext >>= \ctx -> liftIO (f ctx a b c d)
 
-liftFun5 :: MonadZ3 z3 =>
-              (Base.Context -> a1 -> a2 -> a3 -> a4 -> a5 -> IO b)
-                -> a1 -> a2 -> a3 -> a4 -> a5-> z3 b
+liftFun5
+  :: MonadZ3 z3
+  => (Base.Context -> a1 -> a2 -> a3 -> a4 -> a5 -> IO b)
+  -> a1
+  -> a2
+  -> a3
+  -> a4
+  -> a5
+  -> z3 b
 liftFun5 f x1 x2 x3 x4 x5 =
   getContext >>= \ctx -> liftIO (f ctx x1 x2 x3 x4 x5)
 
-liftFun6 :: MonadZ3 z3 =>
-              (Base.Context -> a1 -> a2 -> a3 -> a4 -> a5 -> a6 -> IO b)
-                -> a1 -> a2 -> a3 -> a4 -> a5 -> a6 -> z3 b
+liftFun6
+  :: MonadZ3 z3
+  => (Base.Context -> a1 -> a2 -> a3 -> a4 -> a5 -> a6 -> IO b)
+  -> a1
+  -> a2
+  -> a3
+  -> a4
+  -> a5
+  -> a6
+  -> z3 b
 liftFun6 f x1 x2 x3 x4 x5 x6 =
   getContext >>= \ctx -> liftIO (f ctx x1 x2 x3 x4 x5 x6)
 
-liftSolver0 :: MonadZ3 z3 =>
-       (Base.Context -> Base.Solver -> IO b)
-    -> z3 b
-liftSolver0 f_s =
-  do ctx <- getContext
-     liftIO . f_s ctx =<< getSolver
+liftSolver0 :: MonadZ3 z3 => (Base.Context -> Base.Solver -> IO b) -> z3 b
+liftSolver0 f_s = do
+  ctx <- getContext
+  liftIO . f_s ctx =<< getSolver
 
-liftSolver1 :: MonadZ3 z3 =>
-       (Base.Context -> Base.Solver -> a -> IO b)
-    -> a -> z3 b
-liftSolver1 f_s a =
-  do ctx <- getContext
-     liftIO . (\s -> f_s ctx s a) =<< getSolver
+liftSolver1
+  :: MonadZ3 z3 => (Base.Context -> Base.Solver -> a -> IO b) -> a -> z3 b
+liftSolver1 f_s a = do
+  ctx <- getContext
+  liftIO . (\s -> f_s ctx s a) =<< getSolver
 
-liftSolver2 :: MonadZ3 z3 => (Base.Context -> Base.Solver -> a -> b -> IO c)
-                             -> a -> b -> z3 c
+liftSolver2
+  :: MonadZ3 z3
+  => (Base.Context -> Base.Solver -> a -> b -> IO c)
+  -> a
+  -> b
+  -> z3 c
 liftSolver2 f a b = do
   ctx <- getContext
   slv <- getSolver
   liftIO $ f ctx slv a b
 
-liftFixedpoint0 :: MonadFixedpoint z3 =>
-       (Base.Context -> Base.Fixedpoint -> IO b)
-    -> z3 b
-liftFixedpoint0 f_s =
-  do ctx <- getContext
-     liftIO . f_s ctx =<< getFixedpoint
+liftFixedpoint0
+  :: MonadFixedpoint z3 => (Base.Context -> Base.Fixedpoint -> IO b) -> z3 b
+liftFixedpoint0 f_s = do
+  ctx <- getContext
+  liftIO . f_s ctx =<< getFixedpoint
 
-liftFixedpoint1 :: MonadFixedpoint z3 =>
-       (Base.Context -> Base.Fixedpoint -> a -> IO b)
-    -> a -> z3 b
-liftFixedpoint1 f_s a =
-  do ctx <- getContext
-     liftIO . (\s -> f_s ctx s a) =<< getFixedpoint
+liftFixedpoint1
+  :: MonadFixedpoint z3
+  => (Base.Context -> Base.Fixedpoint -> a -> IO b)
+  -> a
+  -> z3 b
+liftFixedpoint1 f_s a = do
+  ctx <- getContext
+  liftIO . (\s -> f_s ctx s a) =<< getFixedpoint
 
-liftFixedpoint2 :: MonadFixedpoint z3 => (Base.Context -> Base.Fixedpoint -> a -> b -> IO c)
-                             -> a -> b -> z3 c
+liftFixedpoint2
+  :: MonadFixedpoint z3
+  => (Base.Context -> Base.Fixedpoint -> a -> b -> IO c)
+  -> a
+  -> b
+  -> z3 c
 liftFixedpoint2 f a b = do
   ctx <- getContext
   slv <- getFixedpoint
+  liftIO $ f ctx slv a b
+
+liftOptimize0
+  :: MonadOptimize z3 => (Base.Context -> Base.Optimize -> IO b) -> z3 b
+liftOptimize0 f_s = do
+  ctx <- getContext
+  liftIO . f_s ctx =<< getOptimize
+
+liftOptimize1
+  :: MonadOptimize z3
+  => (Base.Context -> Base.Optimize -> a -> IO b)
+  -> a
+  -> z3 b
+liftOptimize1 f_s a = do
+  ctx <- getContext
+  liftIO . (\s -> f_s ctx s a) =<< getOptimize
+
+liftOptimize2
+  :: MonadOptimize z3
+  => (Base.Context -> Base.Optimize -> a -> b -> IO c)
+  -> a
+  -> b
+  -> z3 c
+liftOptimize2 f a b = do
+  ctx <- getContext
+  slv <- getOptimize
   liftIO $ f ctx slv a b
 
 -------------------------------------------------
 -- A simple Z3 monad.
 
 newtype Z3 a = Z3 { _unZ3 :: ReaderT Z3Env IO a }
-    deriving (Functor, Applicative, Monad, MonadIO, MonadFix)
+    deriving (Functor, Applicative, Monad, MonadIO, MonadFix, MonadFail)
 
 -- | Z3 environment.
 data Z3Env
@@ -545,6 +711,7 @@ data Z3Env
       envSolver     :: Base.Solver
     , envContext    :: Base.Context
     , envFixedpoint :: Base.Fixedpoint
+    , envOptimize   :: Base.Optimize
     }
 
 instance MonadZ3 Z3 where
@@ -553,6 +720,9 @@ instance MonadZ3 Z3 where
 
 instance MonadFixedpoint Z3 where
   getFixedpoint = Z3 $ asks envFixedpoint
+
+instance MonadOptimize Z3 where
+  getOptimize = Z3 $ asks envOptimize
 
 -- | Eval a Z3 script.
 evalZ3With :: Maybe Logic -> Opts -> Z3 a -> IO a
@@ -565,14 +735,15 @@ evalZ3 :: Z3 a -> IO a
 evalZ3 = evalZ3With Nothing stdOpts
 
 
-newEnvWith :: (Base.Config -> IO Base.Context) -> Maybe Logic -> Opts -> IO Z3Env
-newEnvWith mkContext mbLogic opts =
-  Base.withConfig $ \cfg -> do
-    setOpts cfg opts
-    ctx <- mkContext cfg
-    solver <- maybe (Base.mkSolver ctx) (Base.mkSolverForLogic ctx) mbLogic
-    fixedpoint <- Base.mkFixedpoint ctx
-    return $ Z3Env solver ctx fixedpoint
+newEnvWith
+  :: (Base.Config -> IO Base.Context) -> Maybe Logic -> Opts -> IO Z3Env
+newEnvWith mkContext mbLogic opts = Base.withConfig $ \cfg -> do
+  setOpts cfg opts
+  ctx        <- mkContext cfg
+  solver     <- maybe (Base.mkSolver ctx) (Base.mkSolverForLogic ctx) mbLogic
+  fixedpoint <- Base.mkFixedpoint ctx
+  optimize   <- Base.mkOptimize ctx
+  return $ Z3Env solver ctx fixedpoint optimize
 
 -- | Create a new Z3 environment.
 newEnv :: Maybe Logic -> Opts -> IO Z3Env
@@ -586,9 +757,7 @@ newEnv = newEnvWith Base.mkContext
 -- Note that an environment may change after each query.
 -- If you want to preserve the same environment then use 'local', as in
 -- @evalZ3WithEnv /env/ (local /query/)@.
-evalZ3WithEnv :: Z3 a
-              -> Z3Env
-              -> IO a
+evalZ3WithEnv :: Z3 a -> Z3Env -> IO a
 evalZ3WithEnv (Z3 s) = runReaderT s
 
 ---------------------------------------------------------------------
@@ -687,41 +856,37 @@ mkArraySort = liftFun2 Base.mkArraySort
 -- | Create a tuple type
 --
 -- Reference: <http://research.microsoft.com/en-us/um/redmond/projects/z3/group__capi.html#ga7156b9c0a76a28fae46c81f8e3cdf0f1>
-mkTupleSort :: MonadZ3 z3
-            => Symbol                          -- ^ Name of the sort
-            -> [(Symbol, Sort)]                -- ^ Name and sort of each field
-            -> z3 (Sort, FuncDecl, [FuncDecl]) -- ^ Resulting sort, and function
+mkTupleSort
+  :: MonadZ3 z3
+  => Symbol                          -- ^ Name of the sort
+  -> [(Symbol, Sort)]                -- ^ Name and sort of each field
+  -> z3 (Sort, FuncDecl, [FuncDecl]) -- ^ Resulting sort, and function
                                                -- declarations for the
                                                -- constructor and projections.
 mkTupleSort = liftFun2 Base.mkTupleSort
 
--- | Create a contructor
+-- | Create a constructor
 --
 -- Reference: <http://research.microsoft.com/en-us/um/redmond/projects/z3/group__capi.html#gaa779e39f7050b9d51857887954b5f9b0>
-mkConstructor :: MonadZ3 z3
-              => Symbol                       -- ^ Name of the sonstructor
-              -> Symbol                       -- ^ Name of recognizer function
-              -> [(Symbol, Maybe Sort, Int)]  -- ^ Name, sort option, and sortRefs
-              -> z3 Constructor
+mkConstructor
+  :: MonadZ3 z3
+  => Symbol                       -- ^ Name of the constructor
+  -> Symbol                       -- ^ Name of recognizer function
+  -> [(Symbol, Maybe Sort, Int)]  -- ^ Name, sort option, and sortRefs
+  -> z3 Constructor
 mkConstructor = liftFun3 Base.mkConstructor
 
 -- | Create datatype, such as lists, trees, records, enumerations or unions of
 --   records. The datatype may be recursive. Return the datatype sort.
 --
 -- Reference <http://research.microsoft.com/en-us/um/redmond/projects/z3/group__capi.html#gab6809d53327d807da9158abdf75df387>
-mkDatatype :: MonadZ3 z3
-           => Symbol
-           -> [Constructor]
-           -> z3 Sort
+mkDatatype :: MonadZ3 z3 => Symbol -> [Constructor] -> z3 Sort
 mkDatatype = liftFun2 Base.mkDatatype
 
 -- | Create mutually recursive datatypes, such as a tree and forest.
 --
 -- Returns the datatype sorts
-mkDatatypes :: MonadZ3 z3
-            => [Symbol]
-            -> [[Constructor]]
-            -> z3 [Sort]
+mkDatatypes :: MonadZ3 z3 => [Symbol] -> [[Constructor]] -> z3 [Sort]
 mkDatatypes = liftFun2 Base.mkDatatypes
 
 -- | Create a set type
@@ -762,6 +927,14 @@ mkFreshConst = liftFun2 Base.mkFreshConst
 mkFreshFuncDecl :: MonadZ3 z3 => String -> [Sort] -> Sort -> z3 FuncDecl
 mkFreshFuncDecl = liftFun3 Base.mkFreshFuncDecl
 
+-- | A recursive Z3 function
+mkRecFuncDecl :: MonadZ3 z3 => Symbol -> [Sort] -> Sort -> z3 FuncDecl
+mkRecFuncDecl = liftFun3 Base.mkRecFuncDecl
+
+-- | Define the body of a recursive Z3 function
+addRecDef :: MonadZ3 z3 => FuncDecl -> [AST] -> AST -> z3 ()
+addRecDef = liftFun3 Base.addRecDef
+
 -------------------------------------------------
 -- ** Helpers
 
@@ -792,9 +965,11 @@ mkIntVar = liftFun1 Base.mkIntVar
 -- | Declarate and create a variable of sort /bit-vector/.
 --
 -- See 'mkVar'.
-mkBvVar :: MonadZ3 z3 => Symbol
-                   -> Int     -- ^ bit-width
-                   -> z3 AST
+mkBvVar
+  :: MonadZ3 z3
+  => Symbol
+  -> Int     -- ^ bit-width
+  -> z3 AST
 mkBvVar = liftFun2 Base.mkBvVar
 
 -- | Declare and create a /fresh/ variable (aka /constant/).
@@ -824,9 +999,11 @@ mkFreshIntVar = liftFun1 Base.mkFreshIntVar
 -- | Declarate and create a /fresh/ variable of sort /bit-vector/.
 --
 -- See 'mkFreshVar'.
-mkFreshBvVar :: MonadZ3 z3 => String
-                        -> Int     -- ^ bit-width
-                        -> z3 AST
+mkFreshBvVar
+  :: MonadZ3 z3
+  => String
+  -> Int     -- ^ bit-width
+  -> z3 AST
 mkFreshBvVar = liftFun2 Base.mkFreshBvVar
 
 ---------------------------------------------------------------------
@@ -963,6 +1140,12 @@ mkMod = liftFun2 Base.mkMod
 mkRem :: MonadZ3 z3 => AST -> AST -> z3 AST
 mkRem = liftFun2 Base.mkRem
 
+-- | Create an AST node representing arg1 ^ arg2.
+--
+-- Reference: <https://z3prover.github.io/api/html/group__capi.html#ga8414506c805caa171f0c1fe29f9f9612>
+mkPower :: MonadZ3 z3 => AST -> AST -> z3 AST
+mkPower = liftFun2 Base.mkPower
+
 -- | Create less than.
 --
 -- Reference: <http://research.microsoft.com/en-us/um/redmond/projects/z3/group__capi.html#ga58a3dc67c5de52cf599c346803ba1534>
@@ -1030,7 +1213,7 @@ mkBvredor = liftFun1 Base.mkBvredor
 --
 -- Reference: <http://research.microsoft.com/en-us/um/redmond/projects/z3/group__capi.html#gab96e0ea55334cbcd5a0e79323b57615d>
 mkBvand :: MonadZ3 z3 => AST -> AST -> z3 AST
-mkBvand  = liftFun2 Base.mkBvand
+mkBvand = liftFun2 Base.mkBvand
 
 -- | Bitwise or.
 --
@@ -1485,16 +1668,215 @@ mkIntNum :: (MonadZ3 z3, Integral a) => a -> z3 AST
 mkIntNum = liftFun1 Base.mkIntNum
 
 -- | Create a numeral of sort /Bit-vector/ from an 'Integer'.
-mkBitvector :: MonadZ3 z3 => Int      -- ^ bit-width
-                          -> Integer  -- ^ integer value
-                          -> z3 AST
+mkBitvector
+  :: MonadZ3 z3
+  => Int      -- ^ bit-width
+  -> Integer  -- ^ integer value
+  -> z3 AST
 mkBitvector = liftFun2 Base.mkBitvector
 
 -- | Create a numeral of sort /Bit-vector/ from an 'Integral'.
-mkBvNum :: (MonadZ3 z3, Integral i) => Int    -- ^ bit-width
-                                    -> i      -- ^ integer value
-                                    -> z3 AST
+mkBvNum
+  :: (MonadZ3 z3, Integral i)
+  => Int    -- ^ bit-width
+  -> i      -- ^ integer value
+  -> z3 AST
 mkBvNum = liftFun2 Base.mkBvNum
+
+---------------------------------------------------------------------
+-- Sequences and regular expressions
+
+-- | Create a sequence sort out of the sort for the elements.
+mkSeqSort :: MonadZ3 z3 => Sort -> z3 Sort
+mkSeqSort = liftFun1 Base.mkSeqSort
+
+-- | Check if s is a sequence sort.
+isSeqSort :: MonadZ3 z3 => Sort -> z3 Bool
+isSeqSort = liftFun1 Base.isSeqSort
+
+-- | Create a regular expression sort out of a sequence sort.
+mkReSort :: MonadZ3 z3 => Sort -> z3 Sort
+mkReSort = liftFun1 Base.mkReSort
+
+-- | Check if s is a regular expression sort.
+isReSort :: MonadZ3 z3 => Sort -> z3 Bool
+isReSort = liftFun1 Base.isReSort
+
+-- | Create a sort for 8 bit strings. This function creates a sort for ASCII
+-- strings. Each character is 8 bits.
+mkStringSort :: MonadZ3 z3 => z3 Sort
+mkStringSort = liftScalar Base.mkStringSort
+
+-- | Check if s is a string sort.
+isStringSort :: MonadZ3 z3 => Sort -> z3 Bool
+isStringSort = liftFun1 Base.isStringSort
+
+-- | Create a string constant out of the string that is passed in.
+mkString :: MonadZ3 z3 => String -> z3 AST
+mkString = liftFun1 Base.mkString
+
+-- | Determine if s is a string constant.
+isString :: MonadZ3 z3 => AST -> z3 Bool
+isString = liftFun1 Base.isString
+
+-- | Retrieve the string constant stored in s.
+getString :: MonadZ3 z3 => AST -> z3 String
+getString = liftFun1 Base.getString
+
+-- | Create an empty sequence of the sequence sort seq.
+mkSeqEmpty :: MonadZ3 z3 => Sort -> z3 AST
+mkSeqEmpty = liftFun1 Base.mkSeqEmpty
+
+-- | Create a unit sequence of a.
+mkSeqUnit :: MonadZ3 z3 => AST -> z3 AST
+mkSeqUnit = liftFun1 Base.mkSeqUnit
+
+-- | Concatenate sequences.
+mkSeqConcat :: (Integral int, MonadZ3 z3) => int -> [AST] -> z3 AST
+mkSeqConcat = liftFun2 Base.mkSeqConcat
+
+-- | Check if prefix is a prefix of s.
+mkSeqPrefix
+  :: MonadZ3 z3
+  => AST -- ^ prefix
+  -> AST -- ^ s
+  -> z3 AST
+mkSeqPrefix = liftFun2 Base.mkSeqPrefix
+
+-- | Check if suffix is a suffix of s.
+mkSeqSuffix
+  :: MonadZ3 z3
+  => AST -- ^ suffix
+  -> AST -- ^ s
+  -> z3 AST
+mkSeqSuffix = liftFun2 Base.mkSeqSuffix
+
+-- | Check if container contains containee.
+mkSeqContains
+  :: MonadZ3 z3
+  => AST -- ^ container
+  -> AST -- ^ containee
+  -> z3 AST
+mkSeqContains = liftFun2 Base.mkSeqContains
+
+-- | Extract subsequence starting at offset of length.
+mkSeqExtract
+  :: MonadZ3 z3
+  => AST -- ^ s
+  -> AST -- ^ offset
+  -> AST -- ^ length
+  -> z3 AST
+mkSeqExtract = liftFun3 Base.mkSeqExtract
+
+-- | Replace the first occurrence of src with dst in s.
+mkSeqReplace
+  :: MonadZ3 z3
+  => AST -- ^ s
+  -> AST -- ^ src
+  -> AST -- ^ dst
+  -> z3 AST
+mkSeqReplace = liftFun3 Base.mkSeqReplace
+
+-- | Retrieve from s the unit sequence positioned at position index.
+mkSeqAt
+  :: MonadZ3 z3
+  => AST -- ^ s
+  -> AST -- ^ index
+  -> z3 AST
+mkSeqAt = liftFun2 Base.mkSeqAt
+
+-- | Return the length of the sequence s.
+mkSeqLength :: MonadZ3 z3 => AST -> z3 AST
+mkSeqLength = liftFun1 Base.mkSeqLength
+
+-- | Return index of first occurrence of substr in s starting from offset
+-- offset. If s does not contain substr, then the value is -1, if offset is the
+-- length of s, then the value is -1 as well. The function is under-specified if
+-- offset is negative or larger than the length of s.
+mkSeqIndex
+  :: MonadZ3 z3
+  => AST -- ^ s
+  -> AST -- ^ substr
+  -> AST -- ^ offset
+  -> z3 AST
+mkSeqIndex = liftFun3 Base.mkSeqIndex
+
+-- | Convert string to integer.
+mkStrToInt :: MonadZ3 z3 => AST -> z3 AST
+mkStrToInt = liftFun1 Base.mkStrToInt
+
+-- | Integer to string conversion.
+mkIntToStr :: MonadZ3 z3 => AST -> z3 AST
+mkIntToStr = liftFun1 Base.mkIntToStr
+
+-- | Create a regular expression that accepts the sequence.
+mkSeqToRe :: MonadZ3 z3 => AST -> z3 AST
+mkSeqToRe = liftFun1 Base.mkSeqToRe
+
+-- | Check if seq is in the language generated by the regular expression re.
+mkSeqInRe
+  :: MonadZ3 z3
+  => AST -- ^ seq
+  -> AST -- ^ re
+  -> z3 AST
+mkSeqInRe = liftFun2 Base.mkSeqInRe
+
+-- | Create the regular language re+.
+mkRePlus :: MonadZ3 z3 => AST -> z3 AST
+mkRePlus = liftFun1 Base.mkRePlus
+
+-- | Create the regular language re*.
+mkReStar :: MonadZ3 z3 => AST -> z3 AST
+mkReStar = liftFun1 Base.mkReStar
+
+-- | Create the regular language [re].
+mkReOption :: MonadZ3 z3 => AST -> z3 AST
+mkReOption = liftFun1 Base.mkReOption
+
+-- | Create the union of the regular languages.
+mkReUnion :: (Integral int, MonadZ3 z3) => int -> [AST] -> z3 AST
+mkReUnion = liftFun2 Base.mkReUnion
+
+-- | Create the concatenation of the regular languages.
+mkReConcat :: (Integral int, MonadZ3 z3) => int -> [AST] -> z3 AST
+mkReConcat = liftFun2 Base.mkReConcat
+
+-- | Create the range regular expression over two sequences of length 1.
+mkReRange
+  :: MonadZ3 z3
+  => AST -- ^ lo
+  -> AST -- ^ hi
+  -> z3 AST
+mkReRange = liftFun2 Base.mkReRange
+
+-- | Create a regular expression loop. The supplied regular expression r is
+-- repeated between lo and hi times. The lo should be below hi with one
+-- exception: when supplying the value hi as 0, the meaning is to repeat the
+-- argument r at least lo number of times, and with an unbounded upper bound.
+mkReLoop
+  :: (Integral int, MonadZ3 z3)
+  => AST -- ^ r
+  -> int -- ^ lo
+  -> int -- ^ hi
+  -> z3 AST
+mkReLoop = liftFun3 Base.mkReLoop
+
+-- | Create the intersection of the regular languages.
+mkReIntersect :: (Integral int, MonadZ3 z3) => int -> [AST] -> z3 AST
+mkReIntersect = liftFun2 Base.mkReIntersect
+
+-- | Create the complement of the regular language.
+mkReComplement :: MonadZ3 z3 => AST -> z3 AST
+mkReComplement = liftFun1 Base.mkReComplement
+
+-- | Create an empty regular expression of sort re.
+mkReEmpty :: MonadZ3 z3 => Sort -> z3 AST
+mkReEmpty = liftFun1 Base.mkReEmpty
+
+-- | Create an universal regular expression of sort re.
+mkReFull :: MonadZ3 z3 => Sort -> z3 AST
+mkReFull = liftFun1 Base.mkReFull
+
 
 ---------------------------------------------------------------------
 -- Quantifiers
@@ -1505,14 +1887,28 @@ mkPattern = liftFun1 Base.mkPattern
 mkBound :: MonadZ3 z3 => Int -> Sort -> z3 AST
 mkBound = liftFun2 Base.mkBound
 
+mkForallW
+  :: MonadZ3 z3 => Int -> [Pattern] -> [Symbol] -> [Sort] -> AST -> z3 AST
+mkForallW = liftFun5 Base.mkForallW
+
 mkForall :: MonadZ3 z3 => [Pattern] -> [Symbol] -> [Sort] -> AST -> z3 AST
 mkForall = liftFun4 Base.mkForall
 
 mkForallConst :: MonadZ3 z3 => [Pattern] -> [App] -> AST -> z3 AST
 mkForallConst = liftFun3 Base.mkForallConst
 
+mkForallWConst :: MonadZ3 z3 => Int -> [Pattern] -> [App] -> AST -> z3 AST
+mkForallWConst = liftFun4 Base.mkForallWConst
+
 mkExistsConst :: MonadZ3 z3 => [Pattern] -> [App] -> AST -> z3 AST
 mkExistsConst = liftFun3 Base.mkExistsConst
+
+mkExistsWConst :: MonadZ3 z3 => Int -> [Pattern] -> [App] -> AST -> z3 AST
+mkExistsWConst = liftFun4 Base.mkExistsWConst
+
+mkExistsW
+  :: MonadZ3 z3 => Int -> [Pattern] -> [Symbol] -> [Sort] -> AST -> z3 AST
+mkExistsW = liftFun5 Base.mkExistsW
 
 mkExists :: MonadZ3 z3 => [Pattern] -> [Symbol] -> [Sort] -> AST -> z3 AST
 mkExists = liftFun4 Base.mkExists
@@ -1661,6 +2057,28 @@ mkFpIEEEBv = liftFun1 Base.mkFpIEEEBv
 getSymbolString :: MonadZ3 z3 => Symbol -> z3 String
 getSymbolString = liftFun1 Base.getSymbolString
 
+-- Reference: <https://z3prover.github.io/api/html/group__capi.html#gacc77e9b5ce5ada28c5af4ddb67d6702a>
+getSortId :: MonadZ3 z3 => Sort -> z3 Int
+getSortId = liftFun1 Base.getSortId
+
+-- | Return the sort name as a symbol.
+--
+-- Reference: <https://z3prover.github.io/api/html/group__capi.html#gab66884f00730c61cf3a5e6814aa2ebd0>
+getSortName :: MonadZ3 z3 => Sort -> z3 Symbol
+getSortName = liftFun1 Base.getSortName
+
+-- | Convert a Z3_sort into Z3_ast. This is just type casting.
+--
+-- Reference: <https://z3prover.github.io/api/html/group__capi.html#gac68cabaff75abfbf3d99f1f66d2e39a5>
+sortToAst :: MonadZ3 z3 => Sort -> z3 AST
+sortToAst = liftFun1 Base.sortToAst
+
+-- | Compare sorts.
+--
+-- | Reference: <https://z3prover.github.io/api/html/group__capi.html#gaf260f3b5bc786cd0552e1ed4f8232a4b>
+isEqSort :: MonadZ3 z3 => Sort -> Sort -> z3 Bool
+isEqSort = liftFun2 Base.isEqSort
+
 -- | Return the sort kind.
 --
 -- Reference: <http://z3prover.github.io/api/html/group__capi.html#gacd85d48842c7bfaa696596d16875681a>
@@ -1673,23 +2091,51 @@ getSortKind = liftFun1 Base.getSortKind
 getBvSortSize :: MonadZ3 z3 => Sort -> z3 Int
 getBvSortSize = liftFun1 Base.getBvSortSize
 
+
+getTupleSortMkDecl :: MonadZ3 z3 => Sort -> z3 FuncDecl
+getTupleSortMkDecl = liftFun1 Base.getTupleSortMkDecl
+
+getTupleSortNumFields :: MonadZ3 z3 => Sort -> z3 Int
+getTupleSortNumFields = liftFun1 Base.getTupleSortNumFields
+
+getTupleSortFieldDecl :: MonadZ3 z3 => Sort -> Int -> z3 FuncDecl
+getTupleSortFieldDecl = liftFun2 Base.getTupleSortFieldDecl
+
 -- | Get list of constructors for datatype.
-getDatatypeSortConstructors :: MonadZ3 z3
-                            => Sort           -- ^ Datatype sort.
-                            -> z3 [FuncDecl]  -- ^ Constructor declarations.
+getDatatypeSortConstructors
+  :: MonadZ3 z3
+  => Sort           -- ^ Datatype sort.
+  -> z3 [FuncDecl]  -- ^ Constructor declarations.
 getDatatypeSortConstructors = liftFun1 Base.getDatatypeSortConstructors
 
 -- | Get list of recognizers for datatype.
-getDatatypeSortRecognizers :: MonadZ3 z3
-                           => Sort           -- ^ Datatype sort.
-                           -> z3 [FuncDecl]  -- ^ Constructor recognizers.
+getDatatypeSortRecognizers
+  :: MonadZ3 z3
+  => Sort           -- ^ Datatype sort.
+  -> z3 [FuncDecl]  -- ^ Constructor recognizers.
 getDatatypeSortRecognizers = liftFun1 Base.getDatatypeSortRecognizers
 
 -- | Get list of accessors for datatype.
-getDatatypeSortConstructorAccessors :: MonadZ3 z3
-                           => Sort           -- ^ Datatype sort.
-                           -> z3 [[FuncDecl]]  -- ^ Constructor recognizers.
-getDatatypeSortConstructorAccessors = liftFun1 Base.getDatatypeSortConstructorAccessors
+getDatatypeSortConstructorAccessors
+  :: MonadZ3 z3
+  => Sort           -- ^ Datatype sort.
+  -> z3 [[FuncDecl]]  -- ^ Constructor recognizers.
+getDatatypeSortConstructorAccessors =
+  liftFun1 Base.getDatatypeSortConstructorAccessors
+
+-- | At most @k@ of the arguments @ps@ may be true, i.e. encode @p1 + p2
+-- + ... + pn <= k@.
+--
+-- Reference: <https://z3prover.github.io/api/html/group__capi.html#gaf2501779266a6dc2738a8928d1fc858c>
+mkAtMost :: MonadZ3 z3 => [AST] -> Int -> z3 AST
+mkAtMost = liftFun2 Base.mkAtMost
+
+-- | At least @k@ of the arguments @ps@ may be true, i.e. encode @p1 +
+-- p2 + ... + pn >= k@.
+--
+-- Reference: <https://z3prover.github.io/api/html/group__capi.html#gaaa996ab58cf979d5849178f1d2963efb>
+mkAtLeast :: MonadZ3 z3 => [AST] -> Int -> z3 AST
+mkAtLeast = liftFun2 Base.mkAtLeast
 
 -- | Return the constant declaration name as a symbol.
 --
@@ -1702,10 +2148,11 @@ getArity :: MonadZ3 z3 => FuncDecl -> z3 Int
 getArity = liftFun1 Base.getArity
 
 -- | Returns the sort of the i-th parameter of the given function declaration
-getDomain :: MonadZ3 z3
-             => FuncDecl         -- ^ A function declaration
-             -> Int              -- ^ i
-             -> z3 Sort
+getDomain
+  :: MonadZ3 z3
+  => FuncDecl         -- ^ A function declaration
+  -> Int              -- ^ i
+  -> z3 Sort
 getDomain = liftFun2 Base.getDomain
 
 -- | Returns the range of the given declaration.
@@ -1765,6 +2212,18 @@ toApp = liftFun1 Base.toApp
 -- | Return numeral value, as a string of a numeric constant term.
 getNumeralString :: MonadZ3 z3 => AST -> z3 String
 getNumeralString = liftFun1 Base.getNumeralString
+
+-- | Return the numerator (as a numeral AST) of a numeral AST of sort Real.
+--
+-- Reference: <https://z3prover.github.io/api/html/group__capi.html#ga2d37084eb47ea0ab19638a3407ce610b>
+getNumerator :: MonadZ3 z3 => AST -> z3 AST
+getNumerator = liftFun1 Base.getNumerator
+
+-- | Return the denominator (as a numeral AST) of a numeral AST of sort Real.
+--
+-- Reference: <https://z3prover.github.io/api/html/group__capi.html#ga07549939888e8fdfc8e0fde1776c31a7>
+getDenominator :: MonadZ3 z3 => AST -> z3 AST
+getDenominator = liftFun1 Base.getDenominator
 
 getIndexValue :: MonadZ3 z3 => AST -> z3 Int
 getIndexValue = liftFun1 Base.getIndexValue
@@ -1838,20 +2297,14 @@ getInt = liftFun1 Base.getInt
 getReal :: MonadZ3 z3 => AST -> z3 Rational
 getReal = liftFun1 Base.getReal
 
--- | Read the 'Integer' value from an 'AST' of sort /bit-vector/.
---
--- See 'mkBv2int'.
-getBv :: MonadZ3 z3 => AST
-                    -> Bool  -- ^ signed?
-                    -> z3 Integer
-getBv = liftFun2 Base.getBv
-
-
 ---------------------------------------------------------------------
 -- Modifiers
 
 substituteVars :: MonadZ3 z3 => AST -> [AST] -> z3 AST
 substituteVars = liftFun2 Base.substituteVars
+
+substitute :: MonadZ3 z3 => AST -> [(AST, AST)] -> z3 AST
+substitute = liftFun2 Base.substitute
 
 ---------------------------------------------------------------------
 -- Models
@@ -1863,9 +2316,12 @@ substituteVars = liftFun2 Base.substituteVars
 --     * /t/ contains a quantifier.
 --     * the model /m/ is partial.
 --     * /t/ is type incorrect.
-modelEval :: MonadZ3 z3 => Model -> AST
-             -> Bool  -- ^ Model completion?
-             -> z3 (Maybe AST)
+modelEval
+  :: MonadZ3 z3
+  => Model
+  -> AST
+  -> Bool  -- ^ Model completion?
+  -> z3 (Maybe AST)
 modelEval = liftFun3 Base.modelEval
 
 -- | Get array as a list of argument/value pairs, if it is
@@ -1913,6 +2369,9 @@ getFuncs = liftFun1 Base.getFuncs
 -- Reference: <http://research.microsoft.com/en-us/um/redmond/projects/z3/group__capi.html#ga4674da67d226bfb16861829b9f129cfa>
 isAsArray :: MonadZ3 z3 => AST -> z3 Bool
 isAsArray = liftFun1 Base.isAsArray
+
+isEqAST :: MonadZ3 z3 => AST -> AST -> z3 Bool
+isEqAST = liftFun2 Base.isEqAST
 
 addFuncInterp :: MonadZ3 z3 => Model -> FuncDecl -> AST -> z3 FuncInterp
 addFuncInterp = liftFun3 Base.addFuncInterp
@@ -2015,13 +2474,15 @@ evalReal = liftFun2 Base.evalReal
 -- The flag /signed/ decides whether the bit-vector value is
 -- interpreted as a signed or unsigned integer.
 --
--- See 'modelEval' and 'getBv'.
-evalBv :: MonadZ3 z3 => Bool -- ^ signed?
-                     -> EvalAst z3 Integer
+-- See 'modelEval' and 'mkBv2int'.
+evalBv
+  :: MonadZ3 z3
+  => Bool -- ^ signed?
+  -> EvalAst z3 Integer
 evalBv = liftFun3 Base.evalBv
 
 -- | Evaluate a collection of AST nodes in the given model.
-evalT :: (MonadZ3 z3,Traversable t) => Model -> t AST -> z3 (Maybe (t AST))
+evalT :: (MonadZ3 z3, Traversable t) => Model -> t AST -> z3 (Maybe (t AST))
 evalT = liftFun2 Base.evalT
 
 -- | Run a evaluation function on a 'Traversable' data structure of 'AST's
@@ -2030,10 +2491,12 @@ evalT = liftFun2 Base.evalT
 -- This a generic version of 'evalT' which can be used in combination with
 -- other helpers. For instance, @mapEval evalInt@ can be used to obtain
 -- the 'Integer' interpretation of a list of 'AST' of sort /int/.
-mapEval :: (MonadZ3 z3, Traversable t) => EvalAst z3 a
-                                       -> Model
-                                       -> t AST
-                                       -> z3 (Maybe (t a))
+mapEval
+  :: (MonadZ3 z3, Traversable t)
+  => EvalAst z3 a
+  -> Model
+  -> t AST
+  -> z3 (Maybe (t a))
 mapEval f m = fmap T.sequence . T.mapM (f m)
 
 -- | Get function as a list of argument/value pairs.
@@ -2117,14 +2580,15 @@ funcDeclToString = liftFun1 Base.funcDeclToString
 -- | Convert the given benchmark into SMT-LIB formatted string.
 --
 -- The output format can be configured via 'setASTPrintMode'.
-benchmarkToSMTLibString :: MonadZ3 z3 =>
-                               String   -- ^ name
-                            -> String   -- ^ logic
-                            -> String   -- ^ status
-                            -> String   -- ^ attributes
-                            -> [AST]    -- ^ assumptions1
-                            -> AST      -- ^ formula
-                            -> z3 String
+benchmarkToSMTLibString
+  :: MonadZ3 z3
+  => String   -- ^ name
+  -> String   -- ^ logic
+  -> String   -- ^ status
+  -> String   -- ^ attributes
+  -> [AST]    -- ^ assumptions1
+  -> AST      -- ^ formula
+  -> z3 String
 benchmarkToSMTLibString = liftFun6 Base.benchmarkToSMTLibString
 
 
@@ -2134,25 +2598,27 @@ benchmarkToSMTLibString = liftFun6 Base.benchmarkToSMTLibString
 -- | Parse SMT expressions from a string
 --
 -- The sort and declaration arguments allow parsing in a context in which variables and functions have already been declared. They are almost never used.
-parseSMTLib2String :: MonadZ3 z3 =>
-                      String     -- ^ string to parse
-                   -> [Symbol]   -- ^ sort names
-                   -> [Sort]     -- ^ sorts
-                   -> [Symbol]   -- ^ declaration names
-                   -> [FuncDecl] -- ^ declarations
-                   -> z3 AST
+parseSMTLib2String
+  :: MonadZ3 z3
+  => String     -- ^ string to parse
+  -> [Symbol]   -- ^ sort names
+  -> [Sort]     -- ^ sorts
+  -> [Symbol]   -- ^ declaration names
+  -> [FuncDecl] -- ^ declarations
+  -> z3 [AST]
 parseSMTLib2String = liftFun5 Base.parseSMTLib2String
 
 -- | Parse SMT expressions from a file
 --
 -- The sort and declaration arguments allow parsing in a context in which variables and functions have already been declared. They are almost never used.
-parseSMTLib2File :: MonadZ3 z3 =>
-                    String     -- ^ string to parse
-                 -> [Symbol]   -- ^ sort names
-                 -> [Sort]     -- ^ sorts
-                 -> [Symbol]   -- ^ declaration names
-                 -> [FuncDecl] -- ^ declarations
-                 -> z3 AST
+parseSMTLib2File
+  :: MonadZ3 z3
+  => String     -- ^ string to parse
+  -> [Symbol]   -- ^ sort names
+  -> [Sort]     -- ^ sorts
+  -> [Symbol]   -- ^ declaration names
+  -> [FuncDecl] -- ^ declarations
+  -> z3 [AST]
 parseSMTLib2File = liftFun5 Base.parseSMTLib2File
 
 ---------------------------------------------------------------------
@@ -2185,6 +2651,78 @@ fixedpointGetAnswer = liftFixedpoint0 Base.fixedpointGetAnswer
 
 fixedpointGetAssertions :: MonadFixedpoint z3 => z3 [AST]
 fixedpointGetAssertions = liftFixedpoint0 Base.fixedpointGetAssertions
+
+---------------------------------------------------------------------
+-- Optimization
+
+class MonadZ3 m => MonadOptimize m where
+  getOptimize :: m Base.Optimize
+
+optimizeAssert :: MonadOptimize z3 => AST -> z3 ()
+optimizeAssert = liftOptimize1 Base.optimizeAssert
+
+optimizeAssertAndTrack :: MonadOptimize z3 => AST -> AST -> z3 ()
+optimizeAssertAndTrack = liftOptimize2 Base.optimizeAssertAndTrack
+
+optimizeAssertSoft :: MonadOptimize z3 => AST -> String -> Symbol -> z3 ()
+optimizeAssertSoft = undefined
+
+optimizeMaximize :: MonadOptimize z3 => AST -> z3 Int
+optimizeMaximize = liftOptimize1 Base.optimizeMaximize
+
+optimizeMinimize :: MonadOptimize z3 => AST -> z3 Int
+optimizeMinimize = liftOptimize1 Base.optimizeMinimize
+
+optimizePush :: MonadOptimize z3 => z3 ()
+optimizePush = liftOptimize0 Base.optimizePush
+
+optimizePop :: MonadOptimize z3 => z3 ()
+optimizePop = liftOptimize0 Base.optimizePop
+
+optimizeCheck :: MonadOptimize z3 => [AST] -> z3 Result
+optimizeCheck = liftOptimize1 Base.optimizeCheck
+
+optimizeGetReasonUnknown :: MonadOptimize z3 => z3 String
+optimizeGetReasonUnknown = liftOptimize0 Base.optimizeGetReasonUnknown
+
+optimizeGetModel :: MonadOptimize z3 => z3 Model
+optimizeGetModel = liftOptimize0 Base.optimizeGetModel
+
+optimizeGetUnsatCore :: MonadOptimize z3 => z3 [AST]
+optimizeGetUnsatCore = liftOptimize0 Base.optimizeGetUnsatCore
+
+optimizeSetParams :: MonadOptimize z3 => Params -> z3 ()
+optimizeSetParams = liftOptimize1 Base.optimizeSetParams
+
+optimizeGetLower :: MonadOptimize z3 => Int -> z3 AST
+optimizeGetLower = liftOptimize1 Base.optimizeGetLower
+
+optimizeGetUpper :: MonadOptimize z3 => Int -> z3 AST
+optimizeGetUpper = liftOptimize1 Base.optimizeGetLower
+
+optimizeGetUpperAsVector :: MonadOptimize z3 => Int -> z3 [AST]
+optimizeGetUpperAsVector = liftOptimize1 Base.optimizeGetUpperAsVector
+
+optimizeGetLowerAsVector :: MonadOptimize z3 => Int -> z3 [AST]
+optimizeGetLowerAsVector = liftOptimize1 Base.optimizeGetLowerAsVector
+
+optimizeToString :: MonadOptimize z3 => z3 String
+optimizeToString = liftOptimize0 Base.optimizeToString
+
+optimizeFromString :: MonadOptimize z3 => String -> z3 ()
+optimizeFromString = liftOptimize1 Base.optimizeFromString
+
+optimizeFromFile :: MonadOptimize z3 => String -> z3 ()
+optimizeFromFile = liftOptimize1 Base.optimizeFromFile
+
+optimizeGetHelp :: MonadOptimize z3 => z3 String
+optimizeGetHelp = liftOptimize0 Base.optimizeGetHelp
+
+optimizeGetAssertions :: MonadOptimize z3 => z3 [AST]
+optimizeGetAssertions = liftOptimize0 Base.optimizeGetAssertions
+
+optimizeGetObjectives :: MonadOptimize z3 => z3 [AST]
+optimizeGetObjectives = liftOptimize0 Base.optimizeGetObjectives
 
 ---------------------------------------------------------------------
 -- * Solvers
@@ -2240,21 +2778,41 @@ solverAssertCnstr = liftSolver1 Base.solverAssertCnstr
 solverAssertAndTrack :: MonadZ3 z3 => AST -> AST -> z3 ()
 solverAssertAndTrack = liftSolver2 Base.solverAssertAndTrack
 
+-- | Return the set of asserted formulas on the solver.
+--
+-- Reference: <https://z3prover.github.io/api/html/group__capi.html#ga3b3d6d8c5bafd5be707cda2d144073db>
+solverGetAssertions :: MonadZ3 z3 => z3 [AST]
+solverGetAssertions = liftSolver0 Base.solverGetAssertions
+
 -- | Check whether the assertions in a given solver are consistent or not.
+--
+-- Reference: <https://z3prover.github.io/api/html/group__capi.html#ga3570e58a8c3d493da4109568b1eca2ce>
 solverCheck :: MonadZ3 z3 => z3 Result
 solverCheck = liftSolver0 Base.solverCheck
 
 -- | Check whether the assertions in the given solver and optional assumptions are consistent or not.
+--
+-- Reference: <https://z3prover.github.io/api/html/group__capi.html#ga65b2bd980519c0e873d328edcc5f9317>
 solverCheckAssumptions :: MonadZ3 z3 => [AST] -> z3 Result
 solverCheckAssumptions = liftSolver1 Base.solverCheckAssumptions
 
--- | Retrieve the model for the last 'solverCheck'.
+-- | Retrieve the model for the last 'solverCheck' or 'solverCheckAssumptions'.
 --
 -- The error handler is invoked if a model is not available because
 -- the commands above were not invoked for the given solver,
 -- or if the result was 'Unsat'.
+--
+-- Reference: <https://z3prover.github.io/api/html/group__capi.html#ga6342b4260e9c92b11cb3eea3a145dff4>
 solverGetModel :: MonadZ3 z3 => z3 Model
 solverGetModel = liftSolver0 Base.solverGetModel
+--
+-- | Retrieve the proof for the last 'solverCheck' or 'solverCheckAssumptions'.
+--
+-- The error handler is invoked if a proof is not available because
+-- the commands above were not invoked for the given solver,
+-- or if the result was different from 'Unsat' (so 'Sat' does not have a proof).
+solverGetProof :: MonadZ3 z3 => z3 AST
+solverGetProof = liftSolver0 Base.solverGetProof
 
 -- | Retrieve the unsat core for the last 'solverCheckAssumptions'; the unsat core is a subset of the assumptions
 solverGetUnsatCore :: MonadZ3 z3 => z3 [AST]
@@ -2274,6 +2832,8 @@ solverToString = liftSolver0 Base.solverToString
 -- | Create a backtracking point.
 --
 -- For @push; m; pop 1@ see 'local'.
+--
+-- Alias for 'solverPush'
 push :: MonadZ3 z3 => z3 ()
 push = solverPush
 
@@ -2299,6 +2859,8 @@ local q = do
   return r
 
 -- | Backtrack all the way.
+--
+-- Alias for 'solverReset'
 reset :: MonadZ3 z3 => z3 ()
 reset = solverReset
 
@@ -2306,23 +2868,29 @@ reset = solverReset
 getNumScopes :: MonadZ3 z3 => z3 Int
 getNumScopes = liftSolver0 Base.solverGetNumScopes
 
+-- | Alias for 'solverAssertCnstr'
 assert :: MonadZ3 z3 => AST -> z3 ()
 assert = solverAssertCnstr
 
 -- | Check whether the given logical context is consistent or not.
+--
+-- Alias for 'solverCheck'
 check :: MonadZ3 z3 => z3 Result
 check = solverCheck
 
 -- | Check whether the assertions in the given solver and optional assumptions are consistent or not.
+--
+-- Alias for 'solverCheckAssumptions'
 checkAssumptions :: MonadZ3 z3 => [AST] -> z3 Result
 checkAssumptions = solverCheckAssumptions
 
+-- | Call 'solverCheck' and based on the result also call 'solverGetModel'.
 solverCheckAndGetModel :: MonadZ3 z3 => z3 (Result, Maybe Model)
 solverCheckAndGetModel = liftSolver0 Base.solverCheckAndGetModel
 
--- | Get model.
+-- | Check and get model.
 --
--- Reference : <http://research.microsoft.com/en-us/um/redmond/projects/z3/group__capi.html#gaff310fef80ac8a82d0a51417e073ec0a>
+-- Alias for 'solverCheckAndGetModel'
 getModel :: MonadZ3 z3 => z3 (Result, Maybe Model)
 getModel = solverCheckAndGetModel
 
@@ -2333,13 +2901,17 @@ getModel = solverCheckAndGetModel
 -- withModel $ \\m ->
 --   fromJust \<$\> evalInt m x
 -- @
-withModel :: (Applicative z3, MonadZ3 z3) =>
-                (Base.Model -> z3 a) -> z3 (Result, Maybe a)
+withModel
+  :: (Applicative z3, MonadZ3 z3)
+  => (Base.Model -> z3 a)
+  -> z3 (Result, Maybe a)
 withModel f = do
- (r,mb_m) <- getModel
- mb_e <- T.traverse f mb_m
- return (r, mb_e)
+  (r, mb_m) <- getModel
+  mb_e      <- T.traverse f mb_m
+  return (r, mb_e)
 
 -- | Retrieve the unsat core for the last 'checkAssumptions'; the unsat core is a subset of the assumptions.
+--
+-- Alias for 'solverGetUnsatCore'
 getUnsatCore :: MonadZ3 z3 => z3 [AST]
 getUnsatCore = solverGetUnsatCore
